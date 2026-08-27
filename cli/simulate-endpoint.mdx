@@ -1,0 +1,117 @@
+---
+title: "jetic simulate endpoint: Test Live API Endpoints"
+sidebarTitle: "simulate endpoint"
+description: "jetic simulate endpoint sends real HTTP requests to your running server using discovered endpoint schemas. Supports single or bulk simulation with --all."
+---
+
+`jetic simulate endpoint` takes the endpoint schemas stored in your Behavioral Model and turns them into real HTTP requests against your live server. Jetic generates realistic request data from the schema — including body fields, path parameters, and headers — then validates the response against the expected shape. Use it to quickly verify a single route or run a full sweep across every endpoint at once.
+
+## Usage
+
+```bash
+jetic simulate endpoint [method] [path] [flags]
+```
+
+## Flags
+
+<ParamField query="--all" type="boolean">
+  Simulate every endpoint discovered in `model.json` sequentially. Prints a progress bar and a pass/fail/skipped summary when complete.
+</ParamField>
+
+<ParamField query="--verbose" type="boolean" default="false">
+  Show full request and response details for each endpoint: generated request body, request headers, response body, and a field-by-field schema validation breakdown.
+</ParamField>
+
+## Environment Selection
+
+When you run a simulation, Jetic reads the `environments` array from your `model.json` and presents an interactive picker:
+
+- If **no environments** are defined, Jetic defaults to `http://localhost:3000`.
+- If **one environment** is defined, Jetic selects it automatically and prints the base URL.
+- If **multiple environments** are defined, use the **↑ / ↓** arrow keys to navigate the list and press **Enter** to confirm your selection.
+
+After picking an environment, Jetic performs a health check against the base URL before sending any simulation requests. If the server is unreachable, the command exits with a clear error message.
+
+## Single Endpoint Example
+
+Simulate a specific endpoint with full verbose output:
+
+```bash
+jetic simulate endpoint GET /api/orders/:id --verbose
+```
+
+```
+  JETIC   Endpoint Simulator
+
+  Model v0.2 • 14 endpoints
+
+  🌍 Environment: local → http://localhost:4000
+
+  ✓ Backend is active
+
+  📡 GET /api/orders/:id
+  ├─ Headers: Authorization: Bearer eyJhbGci...
+  ├─ Response: 200 (143ms)
+  ├─ Response Body:
+  │   {
+  │     "id": "ord_8f3a1b",
+  │     "status": "pending",
+  │     "total": 59.99,
+  │     "createdAt": "2024-11-15T10:23:00.000Z"
+  │   }
+  ├─ Schema Validation: (4/4 fields match)
+  │   ✓ id         Type: string  (expected string)
+  │   ✓ status     Type: string  (expected string)
+  │   ✓ total      Type: number  (expected number)
+  │   ✓ createdAt  Type: string  (expected string)
+  └─ ✓ PASSED • 4/4 fields
+```
+
+## Bulk Simulation Example
+
+Run simulations against every endpoint in your model:
+
+```bash
+jetic simulate endpoint --all
+```
+
+```
+  JETIC   Endpoint Simulator
+
+  Model v0.2 • 14 endpoints
+
+  🌍 Environment: local → http://localhost:4000
+
+  ✓ Backend is active
+
+  🚀 Simulating 14 endpoints...
+
+  ━━━━━━━━━━━━━━━━━━━━━━━━ 14/14  ✓ PATCH  /api/orders/:id/status  200  98ms
+
+  ✅ Simulation Complete! (3.2s)
+
+  ✓ GET    /api/auth/me                 200  112ms
+  ✓ POST   /api/auth/login              200   89ms
+  ✓ POST   /api/auth/register           201   76ms
+  ✓ POST   /api/auth/refresh            200   65ms
+  ✓ DELETE /api/auth/logout             204   54ms
+  ✓ GET    /api/products                200  134ms
+  ✓ POST   /api/products                201  102ms
+  ✓ GET    /api/products/:id            200   88ms
+  ✗ PUT    /api/products/:id            422   91ms
+  ✓ DELETE /api/products/:id            204   77ms
+  ✓ GET    /api/orders                  200  145ms
+  ✓ POST   /api/orders                  201   93ms
+  ✓ GET    /api/orders/:id              200  143ms
+  ✓ PATCH  /api/orders/:id/status       200   98ms
+
+  12 passed  │  1 failed  │  1 skipped
+```
+
+<Note>
+  Your backend server must be running before you execute `jetic simulate endpoint`. Jetic checks reachability at the selected environment's base URL before sending any requests, and exits early with a descriptive error if the server is not responding.
+</Note>
+
+<Tip>
+  Define named environments in your `model.json` under the `environments` array — for example, `local`, `staging`, and `production` — each with its own `baseUrl`. This lets you quickly switch targets using the interactive environment picker without editing any files.
+</Tip>

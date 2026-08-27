@@ -1,0 +1,105 @@
+{
+  "projectType": "cli-tool",
+  "projectName": "Jetic",
+  "projectDescription": "An AI-native CLI tool that statically analyzes Express backends, builds a behavioral model of your API, and runs intelligent end-to-end workflow simulations — all from the terminal.",
+  "theme": "luma",
+  "primaryColor": "#6366F1",
+  "lightColor": "#818CF8",
+  "darkColor": "#4338CA",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/behavioral-model",
+              "concepts/scanning",
+              "concepts/simulation",
+              "concepts/memory"
+            ]
+          },
+          {
+            "group": "CLI Reference",
+            "pages": [
+              "cli/overview",
+              "cli/init",
+              "cli/scan",
+              "cli/inspect",
+              "cli/simulate-endpoint",
+              "cli/simulate-workflow",
+              "cli/memory",
+              "cli/config",
+              "cli/dev"
+            ]
+          },
+          {
+            "group": "Jetic Studio",
+            "pages": [
+              "studio/overview",
+              "studio/model-explorer",
+              "studio/endpoint-inspector",
+              "studio/simulations",
+              "studio/memory-manager"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/config-file",
+              "configuration/ai-providers",
+              "configuration/environments"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/first-scan",
+              "guides/workflow-testing",
+              "guides/troubleshooting"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Zero-execution static analysis — scans Express TypeScript source code via AST parsing without running the server",
+    "Behavioral Model generation — produces a versioned .jetic/model.json capturing endpoints, constraints, auth, and data dependencies",
+    "AI-powered workflow simulation — automatically chains multi-step user journeys with JWT injection and memory capture",
+    "Constraint discovery — extracts business logic rules (min values, enums, conditionals) directly from source code",
+    "Deep import resolution — follows controller/service imports up to 2 levels for richer AI analysis context",
+    "Jetic Studio dashboard — local dark-mode IDE for visual API exploration, source inspection, and simulation management",
+    "Multi-environment support — configure base URLs and variables per environment (dev, staging, prod)",
+    "Flexible AI provider support — works with OpenAI and OpenRouter; bring your own model"
+  ],
+  "publicApiSurface": [
+    "jetic init",
+    "jetic scan",
+    "jetic inspect",
+    "jetic inspect endpoint <method> <path>",
+    "jetic simulate endpoint [method] [path] --all --verbose",
+    "jetic simulate workflow --goal --env --workflow --generate-only --clear-memory",
+    "jetic memory",
+    "jetic memory add",
+    "jetic memory clear",
+    "jetic config",
+    "jetic config ai --provider --model --key-env",
+    "jetic dev --port",
+    "ExpressScanner.scan() => Promise<BehavioralModel>",
+    "BehavioralModel schema (model.json v0.2)",
+    ".jetic/config.json",
+    ".jetic/model.json",
+    ".jetic/workflow.json",
+    ".jetic/memory.json"
+  ]
+}

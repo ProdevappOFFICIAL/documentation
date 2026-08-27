@@ -1,0 +1,35 @@
+---
+title: "Model Explorer: Browse Your Full API Surface"
+sidebarTitle: "Model Explorer"
+description: "The Model Explorer page in Jetic Studio displays all discovered endpoints with search, filter by method, and detailed schema cards for each route."
+---
+
+The Model Explorer gives you a complete visual map of your application's API surface. Navigate to `/model` in Jetic Studio to see every endpoint that `jetic scan` discovered, presented as interactive cards you can search, filter, and drill into — without writing a single query.
+
+## Features
+
+The Model Explorer is designed for fast navigation across large APIs. It provides:
+
+- **Instant search** — type any fragment of a path or method (for example `/orders` or `POST`) to filter the endpoint list in real time
+- **HTTP method filters** — toggle buttons for GET, POST, PUT, PATCH, and DELETE let you narrow the list to a single verb or any combination
+- **Endpoint cards** — each route renders as a card showing its method badge, full path, handler name, parameter count, and auth requirement at a glance
+- **Sort options** — order endpoints by HTTP method, path, or the order they were discovered in the source tree
+
+## Endpoint Cards
+
+Each card in the Model Explorer surfaces the most important metadata for a route without requiring you to open it:
+
+- **Method badge** — color-coded label (GET, POST, PUT, PATCH, DELETE) that matches the HTTP verb
+- **Path** — the full normalized route path, including any prefix resolved from `app.use()` mounts (for example `/api/orders/:id`)
+- **Handler name** — the TypeScript function name Jetic resolved for the route handler
+- **Summary** — a short description extracted or inferred from your source code, when available
+- **Parameter count** — the total number of path, query, and body parameters discovered for the endpoint
+- **Auth indicator** — a lock icon if the endpoint is protected by a security scheme such as `Bearer` or `JWT`
+
+## Trigger Re-Scan
+
+If you modify your Express routes and want the Model Explorer to reflect the latest code, click the **Re-Scan** button in the top-right toolbar. Studio sends a `POST /api/model/scan` request to the local server, which runs the `ExpressScanner` against your project and overwrites `.jetic/model.json` with the updated model. The endpoint list refreshes automatically once the scan completes.
+
+<Tip>
+  Click any endpoint card to jump directly to the Endpoint Inspector for that route, where you can view the original source code, full request and response schemas, and fire a live request against your running server.
+</Tip>

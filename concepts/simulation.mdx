@@ -1,0 +1,166 @@
+---
+title: "API Simulation: Endpoint and Workflow Testing"
+sidebarTitle: "Simulation"
+description: "Jetic supports two simulation modes: single endpoint testing with auto-generated payloads, and AI-powered multi-step workflow execution with memory injection."
+---
+
+Once Jetic has built a Behavioral Model of your API, you can drive real HTTP requests against your running server without writing a single test file. Jetic offers two simulation modes: **Endpoint Simulation** for quickly exercising individual routes, and **Workflow Simulation** for running complete, AI-generated user journeys that chain multiple API calls together. Both modes read directly from `.jetic/model.json` and require no additional configuration beyond what you set up during `jetic init`.
+
+## Two Simulation Modes
+
+<CardGroup cols={2}>
+  <Card title="Endpoint Mode" icon="bolt">
+    Test a single route immediately. Jetic constructs a request from the discovered parameters and body schema, fires it at your server, and shows the response status and body. Use `--all` to sweep every endpoint in sequence.
+  </Card>
+  <Card title="Workflow Mode" icon="arrows-spin">
+    Describe a user journey in plain language. Jetic uses AI to generate a multi-step `workflow.json`, executes each step against your server in order, captures tokens and IDs into memory, and injects them automatically into subsequent requests.
+  </Card>
+</CardGroup>
+
+## Endpoint Simulation
+
+Run `jetic simulate endpoint` to test a specific route:
+
+```bash
+jetic simulate endpoint POST /api/auth/login
+```
+
+Jetic reads the endpoint's `requestBody` fields and `parameters` from `model.json`, constructs a request payload, and sends it to your server. The terminal output shows the HTTP status code, response time, and a formatted response body preview.
+
+**Flags:**
+
+- `--all` — run every endpoint in `model.json` sequentially. Useful for a quick smoke test after deployment.
+- `--verbose` — print the full request headers and body alongside the response.
+
+Before firing any request, Jetic presents an **interactive environment selector** so you can choose which `baseUrl` to target (local, staging, etc.) — see [Environment Selection](#environment-selection) below.
+
+<Note>
+  Your backend server must be running and reachable before you invoke any `jetic simulate` command. Jetic performs a health check against the target `baseUrl` and exits early with a clear error if the server is unreachable.
+</Note>
+
+## Workflow Simulation
+
+Run `jetic simulate workflow` to generate and execute a full end-to-end journey:
+
+```bash
+jetic simulate workflow --goal "Complete customer checkout flow"
+```
+
+Jetic sends a summary of your API's endpoints to your configured AI model and asks it to design a realistic multi-step workflow that achieves the stated goal. The AI produces a `workflow.json` file describing each step — which endpoint to call, what data to send, which response fields to capture, and what to expect. Jetic saves this file to `.jetic/workflow.json` and then executes it step by step.
+
+**Flags:**
+
+| Flag | Description |
+|---|---|
+| `--goal <text>` | Plain-language description of the workflow objective (default: `"Full user journey"`) |
+| `--env <name>` | Name of the environment from `model.json` to target (e.g., `staging`) |
+| `--workflow <file>` | Skip generation and use an existing `workflow.json` file directly |
+| `--generate-only` | Generate `workflow.json` but do not execute it |
+| `--clear-memory` | Wipe `.jetic/memory.json` before the run starts |
+
+During execution, each step is displayed in real time with its HTTP method, path, status code, and duration. Captured memory keys and injected headers are shown inline so you can follow the data flow:
+
+```
+  ✓ Step 1/5  POST   /api/auth/login       200  143ms
+  │   💾 captured workflow:accessToken ← data.accessToken
+  │   💾 captured workflow:userId ← data.userId
+
+  ✓ Step 2/5  POST   /api/orders           201  87ms
+  │   📥 inject Authorization: Bearer eyJhbGci...
+  │   💾 captured workflow:orderId ← data.orderId
+```
+
+If an authentication step fails, Jetic stops the run immediately to avoid cascading failures in downstream steps.
+
+## Workflow JSON Structure
+
+The generated (or hand-crafted) `workflow.json` follows a simple schema. Each `step` maps to one HTTP call:
+
+```json
+{
+  "name": "Customer Checkout Journey",
+  "description": "Register, log in, add item to cart, place order, verify order",
+  "generatedAt": "2025-01-15T10:32:00.000Z",
+  "steps": [
+    {
+      "name": "Register new customer",
+      "method": "POST",
+      "path": "/api/auth/register",
+      "body": {
+        "email": "{{faker.internet.email}}",
+        "password": "SecurePass123!",
+        "name": "{{faker.person.fullName}}"
+      },
+      "captureInput": {
+        "workflow:registeredEmail": "email"
+      },
+      "expectStatus": 201
+    },
+    {
+      "name": "Log in as customer",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "body": {
+        "email": "{{workflow:registeredEmail}}",
+        "password": "SecurePass123!"
+      },
+      "capture": {
+        "workflow:accessToken": "data.accessToken",
+        "workflow:userId": "data.userId"
+      },
+      "expectStatus": 200
+    },
+    {
+      "name": "Place an order",
+      "method": "POST",
+      "path": "/api/orders",
+      "inject": {
+        "header:Authorization": "Bearer {{workflow:accessToken}}"
+      },
+      "body": {
+        "productId": "prod_abc123",
+        "quantity": 2
+      },
+      "capture": {
+        "workflow:orderId": "data.orderId"
+      },
+      "expectStatus": 201
+    }
+  ]
+}
+```
+
+**Key fields per step:**
+
+| Field | Description |
+|---|---|
+| `name` | Human-readable label shown in the terminal output |
+| `method` | HTTP method (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`) |
+| `path` | Endpoint path from `model.json` |
+| `body` | Request body fields — supports `{{faker.*}}` and `{{scope:key}}` templates |
+| `inject` | Memory keys or template strings to inject as request headers or body fields. Prefix `header:` for headers, `body:` for body fields |
+| `capture` | Response fields to read into memory after a successful step. Key is `scope:key`, value is a dot-notation path into the response body |
+| `captureInput` | Request body fields to store in memory *before* the HTTP call (useful for saving faker-generated values) |
+| `expectStatus` | Expected HTTP status code — `201` for creation, `200` for reads, `204` for deletes |
+
+## Environment Selection
+
+Before any simulation run, Jetic reads the `environments` array from `model.json` and either:
+
+- **Prompts you interactively** to select a target environment, if more than one is defined and `--env` is not provided.
+- **Auto-selects** the only environment, if exactly one is defined.
+- **Uses the named environment** you specified with `--env <name>`.
+
+Each environment provides a `baseUrl` that Jetic prepends to all route paths when constructing request URLs.
+
+## Memory and Token Injection
+
+Workflow simulation is stateful. When a step's `capture` field matches a field in the response, Jetic writes that value to `.jetic/memory.json` under the specified `scope:key`. Subsequent steps reference those stored values using the `{{workflow:key}}` template syntax in their `inject` and `body` fields.
+
+This means you can model realistic flows like:
+
+1. `POST /api/auth/login` → captures `workflow:accessToken`
+2. `POST /api/orders` → injects `Authorization: Bearer {{workflow:accessToken}}`
+3. `GET /api/orders/{{workflow:orderId}}` → reads and resolves the captured order ID in the path
+
+For full details on how memory scopes and templates work, see the [Memory](/concepts/memory) concept page.

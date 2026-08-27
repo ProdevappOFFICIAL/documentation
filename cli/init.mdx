@@ -1,0 +1,101 @@
+---
+title: "jetic init: Initialize Jetic in Your Project"
+sidebarTitle: "init"
+description: "jetic init runs an interactive setup wizard that configures your AI provider, model, and API key, then creates the .jetic/ directory and config.json."
+---
+
+Before you can scan your API or run simulations, you need to initialize Jetic in your project. Running `jetic init` walks you through an interactive wizard that records your AI provider choice, model name, and API key — then writes everything to a local `.jetic/` directory so all other commands can pick it up automatically.
+
+## Usage
+
+```bash
+jetic init
+```
+
+Run this command from the root of your Express TypeScript project. If you need to change your AI provider or model later, you can run `jetic init` again or use [`jetic config ai`](/cli/config).
+
+## What It Does
+
+<Steps>
+  <Step title="Prompt for AI provider">
+    Jetic asks which AI provider to use. Press **Enter** to accept the default (`openrouter`), or type `openai` to use OpenAI directly.
+
+    ```
+    AI Provider [default: openrouter]:
+    ```
+  </Step>
+  <Step title="Prompt for model name">
+    Next, choose a model. Press **Enter** to use the default, or supply any model name supported by your provider.
+
+    ```
+    Model name [default: meta-llama/llama-3.1-8b-instruct]:
+    ```
+  </Step>
+  <Step title="Prompt for API key">
+    Paste your API key. Jetic derives the environment variable name automatically from your provider (e.g., `OPENROUTER_API_KEY` or `OPENAI_API_KEY`).
+
+    ```
+    API Key:
+    ```
+  </Step>
+  <Step title="Create the .jetic/ directory">
+    Jetic creates a `.jetic/` directory at your project root if it does not already exist. This directory stores your configuration, model, memory, and generated workflow files.
+  </Step>
+  <Step title="Write .jetic/config.json">
+    Your provider, model name, and API key environment variable name are saved to `.jetic/config.json`. The raw API key is **never** written to this file.
+  </Step>
+  <Step title="Write the API key to .env">
+    If you supplied an API key during the prompt, Jetic appends it to a `.env` file in your project root using the derived variable name:
+
+    ```
+    OPENROUTER_API_KEY=<your-key>
+    ```
+
+    Jetic also prints the equivalent `set` command in case you prefer to export the variable in your shell session instead.
+  </Step>
+</Steps>
+
+## Example Session
+
+```
+Welcome to Jetic Initialization
+
+AI Provider [default: openrouter]: openrouter
+Model name [default: meta-llama/llama-3.1-8b-instruct]: meta-llama/llama-3.1-8b-instruct
+API Key: sk-or-••••••••••••••••
+
+✓ Saved API key to .env file as OPENROUTER_API_KEY
+(Alternatively, you can run: set OPENROUTER_API_KEY=sk-or-••••••••••••••••)
+
+✓ Successfully initialized Jetic in .jetic/
+
+Available Commands:
+  jetic init     Initialize Jetic in the current directory
+  jetic scan     Scan the project for API routes and generate behavioral model
+  jetic inspect  Inspect discovered endpoints and details
+  jetic config   Manage Jetic AI provider and settings
+```
+
+## Output Files
+
+After initialization, `.jetic/config.json` contains your AI settings:
+
+```json
+{
+  "ai": {
+    "provider": "openrouter",
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "apiKeyEnvVar": "OPENROUTER_API_KEY"
+  }
+}
+```
+
+The `apiKeyEnvVar` field stores the **name** of the environment variable, not the key value itself. At runtime, Jetic reads `process.env[apiKeyEnvVar]` to retrieve the key.
+
+<Note>
+  You can run `jetic init` at any time to reconfigure your provider or model. The wizard overwrites the existing `config.json` with your new values, but does not remove previously saved `.env` entries.
+</Note>
+
+<Tip>
+  Add `.jetic/` to your `.gitignore` to avoid committing your configuration, model snapshots, and memory files to source control. At minimum, ensure `.env` is also ignored so your API key stays private.
+</Tip>

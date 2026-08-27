@@ -1,0 +1,123 @@
+---
+title: "Installing Jetic: Requirements and Setup Guide"
+sidebarTitle: "Installation"
+description: "System requirements, installation options, and verification steps for setting up Jetic on macOS, Linux, and Windows with Node 20 or later."
+---
+
+Jetic installs as a global npm package and works on macOS, Linux, and Windows. This page covers everything you need to get Jetic running in your environment: system requirements, installation commands, AI provider configuration, and project initialization.
+
+## System Requirements
+
+Before installing Jetic, confirm your environment meets these requirements:
+
+| Requirement | Minimum Version | Notes |
+|---|---|---|
+| Node.js | 20.0.0 | Required for native APIs used by the CLI |
+| npm / yarn / pnpm | Any current | Used for global installation |
+| TypeScript Express project | — | Jetic scans `.ts` files via your `tsconfig.json` |
+
+<Warning>
+  Jetic will not run on Node.js versions below 20. If you see errors on startup, run `node --version` and upgrade to Node 20 or later before proceeding. Use [nvm](https://github.com/nvm-sh/nvm) or [fnm](https://github.com/Schniz/fnm) to manage multiple Node versions on your machine.
+</Warning>
+
+## Install Jetic
+
+Install the `@jetic/cli` package globally to make the `jetic` command available in any directory.
+
+<CodeGroup>
+  ```bash npm
+  npm install -g @jetic/cli
+  ```
+
+  ```bash yarn
+  yarn global add @jetic/cli
+  ```
+
+  ```bash pnpm
+  pnpm add -g @jetic/cli
+  ```
+</CodeGroup>
+
+## Verify Installation
+
+After installation, confirm the CLI is available and check the version number.
+
+```bash
+jetic --version
+# 0.1.0
+```
+
+If the command is not found, make sure your package manager's global `bin` directory is on your `PATH`. For npm, run `npm bin -g` to find the directory and add it to your shell configuration.
+
+## Project Setup
+
+Navigate to your Express TypeScript project root and run `jetic init` to create the Jetic configuration for that project.
+
+```bash
+cd your-project
+jetic init
+```
+
+The interactive wizard asks for:
+
+- **AI Provider** — `openrouter` (default) or `openai`
+- **Model name** — the model identifier for your provider (default: `meta-llama/llama-3.1-8b-instruct`)
+- **API Key** — your provider key, saved directly to a `.env` file in the project root
+
+After the wizard completes, Jetic creates the following structure:
+
+```
+your-project/
+└── .jetic/
+    └── config.json   # AI provider settings and project configuration
+```
+
+<Note>
+  Add `.jetic/` to your `.gitignore` file to avoid committing API keys, model artifacts, and simulation memory to version control.
+
+  ```bash
+  echo ".jetic/" >> .gitignore
+  ```
+</Note>
+
+## AI Provider Setup
+
+Jetic's workflow simulation and AI-generated test features require an API key from a supported provider. Set your key as an environment variable so Jetic can read it at runtime.
+
+Create or update a `.env` file in your project root:
+
+```bash
+# OpenAI
+OPENAI_API_KEY=sk-...
+
+# or for OpenRouter:
+OPENROUTER_API_KEY=sk-or-...
+```
+
+If you entered your API key during `jetic init`, Jetic already appended the correct line to your `.env` file automatically. You can verify or update the key at any time with `jetic config`:
+
+```bash
+jetic config ai --provider openrouter --model meta-llama/llama-3.1-8b-instruct --key-env OPENROUTER_API_KEY
+```
+
+Jetic reads the environment variable named in `config.json` at runtime. It never hardcodes the key value in the config file itself.
+
+## Updating Jetic
+
+To upgrade to the latest version, re-run the global install command with the `@latest` tag.
+
+<CodeGroup>
+  ```bash npm
+  npm install -g @jetic/cli@latest
+  ```
+
+  ```bash yarn
+  yarn global add @jetic/cli@latest
+  ```
+
+  ```bash pnpm
+  pnpm add -g @jetic/cli@latest
+  ```
+</CodeGroup>
+
+After upgrading, run `jetic scan` again to regenerate your `model.json` with the latest schema version and any new analysis capabilities.

@@ -1,0 +1,72 @@
+---
+title: "jetic inspect: View Discovered API Endpoints"
+sidebarTitle: "inspect"
+description: "jetic inspect lists all discovered endpoints from model.json. Use jetic inspect endpoint to drill into a specific route's source location and schema."
+---
+
+After running `jetic scan`, use `jetic inspect` to browse what was discovered. The base command prints a compact table of all endpoints in your Behavioral Model. The `endpoint` subcommand lets you zoom in on a specific route to see exactly where in your source code it is defined.
+
+## Usage
+
+```bash
+# List all discovered endpoints
+jetic inspect
+
+# Inspect a specific endpoint
+jetic inspect endpoint <METHOD> <path>
+```
+
+## Parameters
+
+The `inspect endpoint` subcommand accepts two positional arguments:
+
+<ParamField path="method" type="string" required>
+  The HTTP method of the endpoint in uppercase or lowercase. For example: `GET`, `POST`, `PUT`, `PATCH`, or `DELETE`.
+</ParamField>
+
+<ParamField path="path" type="string" required>
+  The full route path as it appears in `model.json`, including any parameter placeholders. For example: `/api/users/:id` or `/api/orders`.
+</ParamField>
+
+## Example Output
+
+### `jetic inspect` — endpoint table
+
+```
+Model Version: 0.2
+Endpoints (14):
+
+GET    /api/auth/me
+POST   /api/auth/login
+POST   /api/auth/register
+POST   /api/auth/refresh
+DELETE /api/auth/logout
+GET    /api/products
+POST   /api/products
+GET    /api/products/:id
+PUT    /api/products/:id
+DELETE /api/products/:id
+GET    /api/orders
+POST   /api/orders
+GET    /api/orders/:id
+PATCH  /api/orders/:id/status
+```
+
+### `jetic inspect endpoint GET /api/orders/:id` — source location
+
+```
+GET /api/orders/:id
+
+Source:
+  src/controllers/orders.controller.ts:47
+```
+
+The source location gives you the file path and line number of the route handler function, making it easy to jump directly to the implementation in your editor.
+
+<Note>
+  If `model.json` does not exist yet, `jetic inspect` will print an error asking you to run `jetic scan` first. Always scan before inspecting.
+</Note>
+
+<Tip>
+  You can open the same endpoint in **Jetic Studio** for a richer view that includes the source code snippet, request body schema, response definitions, and a live HTTP simulator — all in one panel. Run `jetic dev` to launch the dashboard.
+</Tip>

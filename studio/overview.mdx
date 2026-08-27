@@ -1,0 +1,60 @@
+---
+title: "Jetic Studio: Your Local API Testing IDE"
+sidebarTitle: "Overview"
+description: "Jetic Studio is a local dark-mode dashboard for exploring your API model, running simulations, and managing workflow state — launched with jetic dev."
+---
+
+Jetic Studio is a fully local, dark-mode browser IDE that brings your API behavioral model to life. Once you run `jetic dev`, Studio reads your `.jetic/model.json` and `.jetic/memory.json` files and gives you a live interface for exploring every discovered endpoint, running AI-generated workflow simulations, inspecting source code, and managing runtime state — all without leaving your machine.
+
+## Launching Studio
+
+Start Studio from the root of your project with a single command:
+
+```bash
+jetic dev
+```
+
+Jetic Studio starts a local server on port **8787** by default and opens your browser automatically. To use a different port, pass the `--port` flag:
+
+```bash
+jetic dev --port 3000
+```
+
+The server exposes a local REST API (used by the Studio UI) and serves the compiled `@jetic/dashboard` static bundle. All requests stay on your machine — nothing is sent to external services.
+
+## Studio Pages
+
+Use the sidebar in Studio to navigate between the four core workspace pages:
+
+<CardGroup cols={2}>
+  <Card title="Model Explorer" icon="magnifying-glass" href="/studio/model-explorer">
+    Browse every discovered endpoint in your project. Search by path or method, filter by HTTP verb, and open detailed schema cards for any route.
+  </Card>
+  <Card title="Endpoint Inspector" icon="microscope" href="/studio/endpoint-inspector">
+    Deep-dive into any single endpoint. View the original source handler, request and response schemas, extracted constraints, and fire live requests in the embedded simulator.
+  </Card>
+  <Card title="Simulations" icon="play" href="/studio/simulations">
+    Generate AI-powered multi-step workflow tests, run them visually with real-time SSE streaming, and trace every captured and injected value across steps.
+  </Card>
+  <Card title="Memory Manager" icon="database" href="/studio/memory-manager">
+    Inspect and edit the key-value memory store that powers template injection in your workflow steps. Add, update, or delete entries directly from the browser.
+  </Card>
+</CardGroup>
+
+## What Studio Shows on /overview
+
+When you first open Studio, the `/overview` page gives you a high-level summary of your project's API surface:
+
+- **Total Endpoints** — the count of all routes discovered by the last `jetic scan` run
+- **HTTP Method Distribution** — a chart breaking down your endpoints by verb (GET, POST, PUT, PATCH, DELETE)
+- **Secured Routes** — the percentage of endpoints protected by a recognized security scheme (JWT, Bearer, etc.)
+- **Recent Workflows** — a list of the workflow JSON files saved in `.jetic/`, each with a quick-launch button
+- **Memory Summary** — a preview of active memory keys currently stored in `.jetic/memory.json`
+
+<Note>
+  Studio reads directly from `.jetic/model.json`. If the overview shows no endpoints or stale data, run `jetic scan` first to build or refresh your behavioral model.
+</Note>
+
+<Tip>
+  You don't need to restart `jetic dev` after rescanning. Use the **Re-Scan** button in the Studio UI to trigger a fresh scan via `POST /api/model/scan` and reload the model without leaving your browser.
+</Tip>

@@ -1,0 +1,110 @@
+---
+title: "How Jetic Scans Your Express Backend"
+sidebarTitle: "Scanning"
+description: "Jetic uses static AST analysis to discover all Express routes, extract handler logic, and build a complete API map — without running your server."
+---
+
+Before Jetic can simulate anything, it needs to understand your API. Running `jetic scan` triggers a multi-phase analysis pipeline that reads your TypeScript source files directly, resolves imports into controllers and services, and then uses an AI model to extract request shapes, response structures, and middleware semantics — all without starting your Express server or connecting to a database. The result is a complete Behavioral Model written to `.jetic/model.json`.
+
+## Zero-Execution Analysis
+
+Jetic never runs your application code. Instead, it loads your project's `tsconfig.json` and uses **ts-morph** to build a full TypeScript AST (abstract syntax tree) in memory. Route registration calls like `router.get(...)` and `app.post(...)` are detected directly in the AST, which means the scan works even when environment variables are missing, databases are offline, or external services are unavailable.
+
+<Warning>
+  Jetic currently supports **TypeScript only**. JavaScript projects (`.js` files without `tsconfig.json`) are not yet supported. Migrate your project to TypeScript before running `jetic scan`.
+</Warning>
+
+## What Gets Scanned
+
+During the initial discovery phase, Jetic extracts the following information from your route files:
+
+- **Route paths** — the string or template literal passed to `router.get()`, `router.post()`, etc.
+- **HTTP methods** — `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, and others
+- **Middleware references** — functions applied before the route handler (e.g., `authenticate`, `rateLimit`, `validateBody`)
+- **Handler names** — the name of the function registered as the route handler
+- **Source locations** — the exact file path and line number of each route definition
+
+## Deep Import Resolution
+
+Route files often delegate business logic to controllers, and controllers often call services. To give the AI a complete picture of what each endpoint does, Jetic follows `import` statements up to **two levels deep** from the route file.
+
+<Steps>
+  <Step title="Parse the route file">
+    Jetic identifies all `router.*` and `app.*` calls in the route file and records the handler function reference.
+  </Step>
+  <Step title="Resolve the controller import">
+    If the handler is imported from another module (e.g., `import { createOrder } from './controllers/orders'`), Jetic reads that file and adds it to the context bundle.
+  </Step>
+  <Step title="Resolve the service import">
+    If the controller calls a service function (e.g., `import { OrderService } from '../services/orders'`), Jetic follows that import one more level and includes the service source in the context bundle.
+  </Step>
+  <Step title="Bundle context for AI analysis">
+    The route file and all resolved context files are passed together to your configured AI model, giving it the full implementation context needed to infer request/response shapes.
+  </Step>
+</Steps>
+
+The context bundle for each route file is cached so that multiple endpoints defined in the same file share a single resolution pass.
+
+## Path Resolution
+
+Express apps commonly mount routers under a prefix using `app.use('/api', router)`. Jetic resolves these prefixes during normalization so that every endpoint in `model.json` has its **full absolute path**.
+
+For example, if you have:
+
+```typescript
+// src/app.ts
+app.use('/api/products', productRouter);
+
+// src/routes/products.ts
+router.get('/:id', getProduct);
+router.post('/', createProduct);
+```
+
+Jetic records these as `/api/products/:id` and `/api/products/`, not as bare `/:id` and `/`.
+
+## AI Analysis Phase
+
+After static route discovery and import resolution, Jetic enters the AI analysis phase. For each endpoint, the bundled source context is sent to your configured AI model (OpenAI or OpenRouter) with a structured prompt requesting:
+
+- **Request body fields** — names, types, and `required` flags for all body parameters
+- **Query / path / header parameters** — with types and descriptions
+- **Response shapes** — field names and types for success responses
+- **Middleware semantics** — what each middleware function actually does (authentication, rate limiting, input validation, etc.)
+
+Jetic displays a real-time progress bar during this phase so you can track which endpoints have been analyzed.
+
+```
+  ━━━━━━━━━━━━━━━━░░░░░░░░ 8/12  ✓ POST /api/orders
+  ━━━━━━━━━━━━━━━━━░░░░░░░ 9/12  ⏳ GET /api/orders/:id
+```
+
+If the AI analysis fails for a specific endpoint (due to a timeout or parsing error), Jetic skips that endpoint and continues — you'll see a `⊘` symbol next to skipped endpoints. Static discovery data is still preserved.
+
+## Output
+
+After all phases complete, Jetic writes the Behavioral Model to `.jetic/model.json`. The terminal summary shows exactly what was captured:
+
+```
+  ✅ Analysis complete! (12.4s)
+
+  ├─ 18 endpoints discovered
+  ├─ 54 request parameters extracted
+  ├─ 36 response fields mapped
+  ├─ 23 middleware references resolved
+  └─ 6 route files → 14 related files resolved
+```
+
+You can then run `jetic inspect` to browse the model, or proceed directly to `jetic simulate`.
+
+## Supported Project Types
+
+| Attribute | Supported value |
+|---|---|
+| Language | TypeScript |
+| Framework | Express.js |
+| Config | `tsconfig.json` required at project root |
+| Module format | ESM and CommonJS |
+
+<Tip>
+  Re-run `jetic scan` any time you add new routes, rename handlers, or change middleware. The scan is fast on incremental changes because import context is resolved per route file.
+</Tip>

@@ -1,0 +1,94 @@
+---
+title: "Configuring AI Providers: OpenAI and OpenRouter"
+sidebarTitle: "AI Providers"
+description: "Jetic supports OpenAI and OpenRouter as AI backends for scanning and workflow generation. Learn how to configure each provider and choose the right model."
+---
+
+Jetic uses AI in two distinct places: during `jetic scan` to extract parameter schemas, request body shapes, and response structures from your TypeScript source code, and during `jetic simulate workflow` to generate a realistic multi-step workflow JSON from a plain-English goal. Both operations call the same provider and model you configure in `.jetic/config.json`. You can use OpenAI directly or route through OpenRouter to access a broader set of models — including open-source alternatives — from a single API key.
+
+## Supported Providers
+
+<CardGroup cols={2}>
+  <Card title="OpenAI" icon="bolt">
+    Access GPT-4o, GPT-3.5 Turbo, and other OpenAI models directly. Best choice when you need maximum accuracy on complex codebases or multi-step workflow generation.
+
+    **Provider string:** `"openai"`
+  </Card>
+  <Card title="OpenRouter" icon="route">
+    A unified API gateway for dozens of models including Llama, Mistral, Claude, and more. The default provider when you run `jetic init` — great for cost-efficient scanning and experimenting with different models.
+
+    **Provider string:** `"openrouter"`
+  </Card>
+</CardGroup>
+
+## OpenAI Setup
+
+Set `provider` to `"openai"` and supply your OpenAI model name. Jetic reads the API key from the environment variable named in `apiKeyEnvVar`.
+
+```json .jetic/config.json
+{
+  "ai": {
+    "provider": "openai",
+    "model": "gpt-4o",
+    "apiKeyEnvVar": "OPENAI_API_KEY"
+  }
+}
+```
+
+Add your key to `.env` in your project root:
+
+```bash .env
+OPENAI_API_KEY=sk-...
+```
+
+## OpenRouter Setup
+
+Set `provider` to `"openrouter"` and use any model identifier from the [OpenRouter model list](https://openrouter.ai/models). The default model when you run `jetic init` is `meta-llama/llama-3.1-8b-instruct`.
+
+```json .jetic/config.json
+{
+  "ai": {
+    "provider": "openrouter",
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "apiKeyEnvVar": "OPENROUTER_API_KEY"
+  }
+}
+```
+
+```bash .env
+OPENROUTER_API_KEY=sk-or-...
+```
+
+## Choosing a Model
+
+The right model depends on what you're optimizing for. Use this table as a starting point:
+
+| Use Case | Recommended Model | Provider |
+|---|---|---|
+| Best accuracy for complex APIs | `gpt-4o` | OpenAI |
+| Cost-efficient scanning | `meta-llama/llama-3.1-8b-instruct` | OpenRouter |
+| Fast scanning on large projects | `gpt-3.5-turbo` | OpenAI |
+
+For most projects, `meta-llama/llama-3.1-8b-instruct` on OpenRouter offers a good balance of speed and quality without incurring high per-token costs. If your codebase uses complex middleware chains, nested validators, or custom auth logic, upgrade to `gpt-4o` for better schema extraction fidelity.
+
+## Switching Providers
+
+You can switch providers at any time without re-running `jetic init`. Use `jetic config ai` to update the AI block in `config.json` directly:
+
+```bash
+# Switch to OpenAI gpt-4o
+jetic config ai --provider openai --model gpt-4o --key-env OPENAI_API_KEY
+
+# Switch to OpenRouter with Llama
+jetic config ai --provider openrouter --model meta-llama/llama-3.1-8b-instruct --key-env OPENROUTER_API_KEY
+```
+
+After switching, run `jetic scan` again to regenerate `model.json` with the new model's analysis.
+
+<Warning>
+  Never commit your `.env` file or API key values to version control. Add `.env` to `.gitignore` before your first commit. Your `config.json` only stores the **name** of the environment variable (e.g., `"OPENAI_API_KEY"`), never the key value itself.
+</Warning>
+
+<Note>
+  AI configuration is optional for basic route discovery. If the `ai` block is absent from `config.json`, Jetic still runs `jetic scan` and discovers all routes, paths, and middleware using static TypeScript analysis. Parameter schemas and request body shapes will be empty — you can fill them in manually in `model.json`. You will need AI configured to use `jetic simulate workflow`.
+</Note>

@@ -1,0 +1,97 @@
+---
+title: "jetic memory: Manage Workflow State and Stored Values"
+sidebarTitle: "memory"
+description: "jetic memory manages the scoped key-value store used to pass captured values between workflow steps. Supports listing, adding, and clearing entries."
+---
+
+Jetic's memory store is a scoped key-value cache that lives in `.jetic/memory.json`. During workflow execution, Jetic automatically writes tokens, IDs, and other captured response values into memory, then reads them back when injecting data into subsequent steps. The `jetic memory` commands let you inspect, manually populate, or reset this store from the terminal.
+
+## Commands
+
+### `jetic memory` — list all entries
+
+Prints a table of every key-value pair currently in the memory store, organized by scope.
+
+```bash
+jetic memory
+```
+
+**Example output:**
+
+```
+┌─────┬──────────────────────────────┬────────────────────────────────────────────────────┐
+│ S/N │ KEY                          │ TEXT                                               │
+├─────┼──────────────────────────────┼────────────────────────────────────────────────────┤
+│  1  │ workflow:accessToken         │ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyS... │
+│  2  │ workflow:adminId             │ usr_4f8b2c                                         │
+│  3  │ workflow:examId              │ exam_7c2d9e                                        │
+│  4  │ global:adminEmail            │ admin@example.com                                  │
+└─────┴──────────────────────────────┴────────────────────────────────────────────────────┘
+```
+
+If the store is empty, Jetic prints `Memory is empty.`
+
+---
+
+### `jetic memory add` — add an entry interactively
+
+Starts an interactive prompt that asks for a key and a value, then writes the entry to the store. Use this to seed memory with values before running a workflow that expects them to already exist.
+
+```bash
+jetic memory add
+```
+
+**Example session:**
+
+```
+Key/Identifier: workflow:accessToken
+Text: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+✓ Successfully added workflow:accessToken to memory.
+```
+
+---
+
+### `jetic memory clear` — clear all entries
+
+Removes every entry from the memory store. Use this before starting a fresh workflow run when you want to guarantee there are no leftover values from a previous session.
+
+```bash
+jetic memory clear
+```
+
+```
+Memory cleared.
+```
+
+<Note>
+  You can also clear memory automatically at the start of a workflow run by passing `--clear-memory` to `jetic simulate workflow`. This is equivalent to running `jetic memory clear` immediately before the workflow executes.
+</Note>
+
+---
+
+## Key Format
+
+Memory keys follow a `scope:key` format. The scope groups related values together and is used by workflow steps to namespace their captured data:
+
+| Key | Scope | Key name | Description |
+|---|---|---|---|
+| `workflow:accessToken` | `workflow` | `accessToken` | JWT captured during a login step |
+| `workflow:orderId` | `workflow` | `orderId` | Resource ID captured after a POST |
+| `global:adminEmail` | `global` | `adminEmail` | Manually seeded value available across all scopes |
+
+If you enter a bare key without a colon (e.g., `adminEmail`) when using `jetic memory add`, Jetic assigns it to the `global` scope automatically, storing it as `global:adminEmail`.
+
+In workflow JSON files, reference memory values using the `{{scope:key}}` template syntax:
+
+```json
+{
+  "inject": {
+    "header:Authorization": "Bearer {{workflow:accessToken}}"
+  }
+}
+```
+
+<Tip>
+  Use `jetic memory` to verify that tokens and IDs were captured correctly after a workflow run. If a step is failing unexpectedly, checking the memory store often reveals a missing or malformed captured value from an earlier step.
+</Tip>

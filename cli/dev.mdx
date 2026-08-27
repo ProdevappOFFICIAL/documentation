@@ -1,0 +1,73 @@
+---
+title: "jetic dev: Launch the Jetic Studio Dashboard"
+sidebarTitle: "dev"
+description: "jetic dev starts a local web server serving Jetic Studio — a browser-based IDE for exploring your API model, running simulations, and inspecting memory."
+---
+
+`jetic dev` starts a lightweight local server that serves **Jetic Studio** — a browser-based dashboard where you can explore your Behavioral Model visually, inspect endpoint schemas with inline source code, run workflow simulations with a live step-by-step feed, and manage your memory store. It is the graphical companion to the CLI commands, giving you the same power in a richer interface.
+
+## Usage
+
+```bash
+jetic dev [--port <number>]
+```
+
+## Flags
+
+<ParamField query="--port" type="number" default="8787">
+  The port to bind the Jetic Studio server to. Shorthand: `-p`. Use this flag if port `8787` is already in use on your machine.
+</ParamField>
+
+## What Opens
+
+Once the server starts, Jetic automatically opens `http://localhost:8787` (or your chosen port) in your default browser. Jetic Studio includes five pages:
+
+<CardGroup cols={2}>
+  <Card title="Overview" icon="chart-bar" href="http://localhost:8787/overview">
+    A stats dashboard showing endpoint counts, method distributions, and a summary of your Behavioral Model's current state.
+  </Card>
+  <Card title="Model Explorer" icon="table-list" href="http://localhost:8787/model">
+    Browse every discovered endpoint in a searchable, filterable table. Click any row to view its full schema.
+  </Card>
+  <Card title="Endpoint Inspector" icon="code" href="http://localhost:8787/inspect">
+    Deep-dive into a single endpoint: view its source file with a highlighted code snippet, request body definition, response schemas, middleware chain, and run a live HTTP request directly from the browser.
+  </Card>
+  <Card title="Simulations" icon="play" href="http://localhost:8787/simulations">
+    Build and run multi-step workflow tests in the browser. Watch each step execute in real time with a live status feed, captured memory values, and response previews.
+  </Card>
+  <Card title="Memory" icon="database" href="http://localhost:8787/memory">
+    Inspect, add, and delete entries in the Jetic memory store. See exactly which tokens and IDs were captured during your last workflow run.
+  </Card>
+</CardGroup>
+
+## Example
+
+Start Jetic Studio on a custom port:
+
+```bash
+jetic dev --port 3000
+```
+
+```
+🚀 Jetic Studio is running at http://localhost:3000
+```
+
+Your default browser opens `http://localhost:3000` automatically.
+
+To use the default port:
+
+```bash
+jetic dev
+```
+
+```
+🚀 Jetic Studio is running at http://localhost:8787
+```
+
+<Note>
+  Jetic Studio opens in your default browser automatically when the server is ready. You do not need to navigate there manually. If the browser does not open (for example, in a headless environment), copy the printed URL and open it yourself.
+</Note>
+
+<Tip>
+  Run `jetic dev` in a split terminal alongside your API server. That way Jetic Studio can reach your backend immediately when you use the live simulator in the Endpoint Inspector or trigger a workflow run from the Simulations page.
+</Tip>

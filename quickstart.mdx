@@ -1,47 +1,171 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Get Started with Jetic in Under 5 Minutes"
+sidebarTitle: "Quickstart"
+description: "Install Jetic, run your first scan, and simulate API endpoints in under 5 minutes. Requires Node 20+ and an Express TypeScript project."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
-
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
+This guide walks you through installing Jetic, scanning an Express TypeScript project, and running your first endpoint simulation. By the end you will have a live Behavioral Model of your API and a working simulation result in your terminal.
 
 ## Prerequisites
 
-Before you begin, you must have:
+Before you begin, make sure you have:
 
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
+- **Node.js 20 or later** — Jetic uses modern Node.js APIs. Run `node --version` to confirm.
+- **An Express TypeScript project** — Jetic scans `.ts` source files and relies on a `tsconfig.json` at the project root.
+- **An AI provider API key** — Jetic supports [OpenAI](https://platform.openai.com/api-keys) and [OpenRouter](https://openrouter.ai/keys). You need one for AI-powered simulation features.
 
-## Get started
+## Steps
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+  <Step title="Install Jetic">
+    Install the `jetic` CLI globally so it is available in any project directory.
+
+    <CodeGroup>
+      ```bash npm
+      npm install -g @jetic/cli
+      ```
+
+      ```bash yarn
+      yarn global add @jetic/cli
+      ```
+
+      ```bash pnpm
+      pnpm add -g @jetic/cli
+      ```
+    </CodeGroup>
+
+    Confirm the installation succeeded:
 
     ```bash
-    npm install your-package
+    jetic --version
+    # 0.1.0
     ```
   </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
+
+  <Step title="Initialize your project">
+    Navigate to your Express TypeScript project root and run `jetic init`. Jetic walks you through an interactive setup wizard.
 
     ```bash
-    your-cli init
+    cd your-project
+    jetic init
+    ```
+
+    The wizard prompts you for three values:
+
+    | Prompt | Default | Description |
+    |---|---|---|
+    | AI Provider | `openrouter` | The AI backend to use for workflow generation |
+    | Model name | `meta-llama/llama-3.1-8b-instruct` | The model identifier for your chosen provider |
+    | API Key | _(required)_ | Your provider API key — saved to `.env` automatically |
+
+    When complete, Jetic creates the `.jetic/` directory and writes your settings to `.jetic/config.json`.
+  </Step>
+
+  <Step title="Scan your API">
+    Run the scanner to analyze your TypeScript source and build the Behavioral Model.
+
+    ```bash
+    jetic scan
+    ```
+
+    Jetic reads your `tsconfig.json`, parses every source file with AST analysis, resolves nested Express routers, and extracts route definitions, parameters, middleware, and inline constraints — without starting your server.
+
+    Sample output:
+
+    ```
+    Jetic API Intelligence
+    Scanning project...
+
+    ✓ Discovered 12 endpoints
+    Behavioral model generated at .jetic/model.json
+    ```
+
+    The full model is saved to `.jetic/model.json` for inspection, simulation, and Studio visualization.
+  </Step>
+
+  <Step title="Inspect discovered endpoints">
+    List every endpoint Jetic found during the scan.
+
+    ```bash
+    jetic inspect
+    ```
+
+    Sample output:
+
+    ```
+    Model Version: 0.2
+    Endpoints (12):
+
+    GET    /api/users
+    POST   /api/users/register
+    POST   /api/users/login
+    GET    /api/users/:id
+    PUT    /api/users/:id
+    DELETE /api/users/:id
+    GET    /api/products
+    POST   /api/products
+    GET    /api/products/:id
+    POST   /api/orders
+    GET    /api/orders/:id
+    GET    /api/orders/:id/receipt
+    ```
+
+    To drill into a specific endpoint and see its source location:
+
+    ```bash
+    jetic inspect endpoint GET /api/orders/:id
+    ```
+
+    ```
+    GET /api/orders/:id
+
+    Source:
+      src/routes/orders.ts:42
     ```
   </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
+
+  <Step title="Simulate an endpoint">
+    With your server running, simulate a specific endpoint to verify it behaves as modeled.
 
     ```bash
-    your-cli start
+    jetic simulate endpoint GET /api/users --verbose
+    ```
+
+    Jetic prompts you to select a configured environment (base URL), then sends the request and displays the full request and response details.
+
+    Sample output:
+
+    ```
+    ✓ GET /api/users
+    Status:  200 OK
+    Latency: 34ms
+
+    Response:
+    [
+      { "id": "u_01", "email": "alice@example.com", "role": "admin" },
+      { "id": "u_02", "email": "bob@example.com",   "role": "user"  }
+    ]
+    ```
+
+    To simulate all discovered endpoints in one pass:
+
+    ```bash
+    jetic simulate endpoint --all
     ```
   </Step>
 </Steps>
 
 <Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
-
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
+  Run `jetic dev` to launch **Jetic Studio** — a local browser dashboard where you can browse your Behavioral Model, view source provenance, and run simulations interactively. It opens automatically at `http://localhost:8787`.
 </Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="CLI Reference" icon="terminal" href="/cli/overview">
+    Explore every Jetic command and flag in detail, including `simulate workflow` for AI-generated multi-step test journeys.
+  </Card>
+  <Card title="Core Concepts" icon="brain" href="/concepts/behavioral-model">
+    Learn how the Behavioral Model is structured, how the memory system works, and how workflow templates are evaluated.
+  </Card>
+</CardGroup>

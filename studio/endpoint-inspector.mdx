@@ -1,0 +1,73 @@
+---
+title: "Endpoint Inspector: Deep-Dive Into Any API Route"
+sidebarTitle: "Endpoint Inspector"
+description: "The Endpoint Inspector in Jetic Studio shows source code, request/response schemas, constraints, and an interactive simulator for any discovered endpoint."
+---
+
+The Endpoint Inspector gives you the full picture of a single API route. Navigate to `/inspect` in Jetic Studio — or click any endpoint card in the Model Explorer — to open a four-panel view that combines source code, schema definitions, discovered business logic, and a live request simulator all in one place.
+
+## Inspector Panels
+
+The Inspector is divided into four panels, each surfacing a different layer of your endpoint's behavioral model.
+
+### Source Viewer
+
+The Source Viewer displays the exact backend handler for the selected endpoint. Jetic resolves the source file and line number from your `model.json` and fetches the snippet via `GET /api/model/source?file=&line=`. The panel:
+
+- Highlights the specific line where the route handler begins
+- Shows approximately 40 lines of context (five lines before, 35 lines after) to keep the handler in view
+- Lists **Related Files** — TypeScript modules imported by the handler file (middleware, validators, models) resolved via `GET /api/model/related?id=`
+- Lets you click any related file to load its source in the same viewer
+
+### Schema Panel
+
+The Schema Panel renders the full input and output contract for the endpoint:
+
+- **Path parameters** — named segments in the route (for example `:id`, `:userId`)
+- **Query parameters** — optional or required query string keys with their expected types
+- **Request body** — each field with its name, type, and format requirements
+- **Response shapes** — documented response codes and the structure of each response body
+
+### Constraints Panel
+
+The Constraints Panel shows the business logic rules Jetic extracted directly from `if`-statements and conditional checks inside your handler code. Examples include:
+
+- Minimum and maximum numeric values (for example `quantity > 0`)
+- String length requirements (for example `password.length >= 8`)
+- Enum membership checks (for example `role === "admin"`)
+- Conditional field requirements (for example a `discountCode` field only accepted when `total > 100`)
+
+These constraints are stored in `model.json` and used by AI workflow generation to produce realistic, valid test payloads.
+
+### Live Simulator
+
+The Live Simulator lets you fire a real HTTP request to your running server and see the response inline. Fill in any path parameters, query parameters, and body fields using the form rendered from the Schema Panel, then click **Simulate**. The panel displays:
+
+- The resolved request URL, method, and headers
+- The HTTP response status code and latency in milliseconds
+- The full response body formatted as JSON
+
+<Note>
+  The Live Simulator sends requests directly to the `baseUrl` defined in your model's `local` environment. Make sure your backend server is running before you click Simulate.
+</Note>
+
+## How to Use
+
+<Steps>
+  <Step title="Select an endpoint">
+    Open the Model Explorer at `/model` and click the endpoint card you want to inspect. Studio navigates to `/inspect` and loads the four panels for that route.
+  </Step>
+  <Step title="Review the source code">
+    Read through the Source Viewer to understand the handler logic and check the Related Files list for any middleware or helpers that affect the route's behavior.
+  </Step>
+  <Step title="Examine the schema and constraints">
+    Switch to the Schema Panel to see all accepted parameters and response shapes. Then open the Constraints Panel to review any business logic rules the scanner extracted.
+  </Step>
+  <Step title="Fill in parameters and simulate">
+    Enter values for the required fields in the Live Simulator form. Use the constraints from the previous step to supply valid inputs, then click **Simulate** to fire the request and inspect the live response.
+  </Step>
+</Steps>
+
+<Tip>
+  Use the **Edit** button in the top-right corner of the Inspector to manually adjust endpoint metadata — such as summary, security scheme, or parameter descriptions — directly in `model.json`. Changes are saved via `PUT /api/model/endpoint/:id` and persist across Studio sessions.
+</Tip>

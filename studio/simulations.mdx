@@ -1,0 +1,57 @@
+---
+title: "Simulations: Build and Run API Workflow Tests"
+sidebarTitle: "Simulations"
+description: "The Simulations page in Jetic Studio lets you generate AI-powered multi-step workflows, run them visually, and track step-by-step progress with memory injection."
+---
+
+The Simulations page is where Jetic's AI-powered workflow engine comes to life visually. Navigate to `/simulations` in Jetic Studio to see all your saved workflows, run them with real-time step-by-step feedback, and generate new multi-step test scenarios using natural language goals — all without touching the command line.
+
+## Workflow List
+
+The Simulations page opens with a list of every workflow file Jetic has found in your `.jetic/` directory. Studio loads these by calling `GET /api/workflows`, which scans `.jetic/` for JSON files that contain a `steps` array. Each list item shows:
+
+- **Workflow name** — taken from the `name` field at the top of the workflow file
+- **Step count** — the total number of sequential steps in the workflow
+- **File name** — the `.json` filename stored in `.jetic/` (for example `workflow.json` or `checkout-flow.json`)
+- **Run** and **Delete** action buttons
+
+## Running a Workflow
+
+Click **Run** next to any workflow to start execution. Studio posts to `POST /api/workflows/run` and streams progress back via Server-Sent Events (SSE). While the workflow runs:
+
+- Each step card updates in real time as Studio receives `step_start` and `step_result` events
+- A status indicator on each card shows ✓ (passed) or ✗ (failed) once the step completes
+- The response time in milliseconds appears next to the status indicator
+- A summary bar at the top tracks total passed, failed, and remaining steps
+
+## Workflow Steps
+
+Each step card in the running view shows the full execution detail for that step:
+
+- **Method and path** — the HTTP verb and resolved URL for the request (for example `POST /api/auth/login`)
+- **Injected values** — memory keys or template expressions resolved before the request was sent (for example `Authorization: Bearer {{workflow:accessToken}}`)
+- **Captured values** — keys extracted from the response body and written to memory (for example `workflow:accessToken ← token`)
+- **Expected vs actual status** — the HTTP status code the step expected alongside the code the server returned
+- **Response body** — the full JSON response from the server, expandable inline
+
+If a step fails and does not have `continueOnFailure` set, the workflow halts and Studio displays an `aborted` banner with the reason.
+
+## Generate New Workflow
+
+To create a new workflow from scratch, click **Generate Workflow** at the top of the Simulations page. Studio shows a goal input field where you describe the user journey you want to test in plain English — for example:
+
+```
+User registers, logs in, adds an item to the cart, and completes checkout
+```
+
+Studio sends this goal to the AI (using the provider configured in `.jetic/config.json`) along with your full `model.json` as context. The AI returns a `workflow.json` file that Studio saves to `.jetic/` and immediately adds to the workflow list, ready to run.
+
+Use the `--generate-only` flag equivalent in Studio by reviewing the generated file before running it — the step cards are shown in a preview mode so you can check the resolved paths, expected status codes, and capture rules before execution begins.
+
+<Note>
+  Your target API server must be running when you execute a workflow. Studio resolves the base URL from the `local` environment in `model.json`. If the server is unreachable, each step will fail with a network error and execution will halt.
+</Note>
+
+<Tip>
+  Before clicking Run on a freshly generated workflow, expand each step card in preview mode to confirm the paths, body fields, and capture rules look correct. Editing the `workflow.json` file directly and refreshing the Simulations page is the fastest way to fix any AI-generated step before running it for real.
+</Tip>

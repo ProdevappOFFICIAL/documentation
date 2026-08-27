@@ -1,0 +1,49 @@
+---
+title: "Memory Manager: Inspect and Edit Workflow State"
+sidebarTitle: "Memory Manager"
+description: "The Memory Manager in Jetic Studio shows all stored memory entries from .jetic/memory.json and lets you add, edit, or delete values used in workflow templates."
+---
+
+The Memory Manager gives you direct visibility into the key-value store that powers template injection across your workflow steps. Navigate to `/memory` in Jetic Studio to see every entry currently saved in `.jetic/memory.json`, and to add, edit, or remove values without dropping to the terminal.
+
+## Memory Table
+
+The Memory Manager displays all entries as a table with four columns:
+
+| Column | Description |
+|---|---|
+| **Scope** | The namespace that groups related keys together (for example `workflow`, `global`, `auth`) |
+| **Key** | The specific identifier within the scope (for example `accessToken`, `userId`, `orderId`) |
+| **Value** | The stored value — a JWT, an ID, a string, or any scalar value your workflow captured or that you seeded manually |
+| **Actions** | Inline edit and delete controls for each row |
+
+Studio populates the table by calling `GET /api/memory`, which reads `.jetic/memory.json` and returns all entries flattened into `scope:key` pairs.
+
+## Adding Entries
+
+Click **Add Entry** above the table to open the entry form. Fill in two fields:
+
+- **Key** — enter the full scoped key in `scope:key` format (for example `global:adminToken` or `workflow:productId`)
+- **Value** — the string value to store
+
+Click **Save** and Studio posts to `POST /api/memory` with the key and value. The new row appears in the table immediately. If the `scope:key` already exists, the POST call overwrites it with the new value.
+
+## Editing Values
+
+Click any **Value** cell in the table to switch it to an inline text input. Type the new value and press Enter (or click outside the cell) to save. Studio sends a `POST /api/memory` request with the updated value and refreshes the row in place.
+
+## Deleting Entries
+
+Click the **Delete** icon on any row to remove that entry. Studio sends `DELETE /api/memory` with the full `scope:key` identifier. The row disappears from the table and the entry is removed from `.jetic/memory.json`. Workflows that reference the deleted key via `{{scope:key}}` will resolve it to an empty string on the next run.
+
+## Common Use Cases
+
+Pre-seeding memory entries is particularly useful in two scenarios:
+
+**Testing protected routes without running a full login workflow first.** If you have a JWT or API key you want to use immediately, add it as a memory entry (for example `auth:bearerToken`) and reference it in any workflow step's `inject` map with `{{auth:bearerToken}}`. This lets you test downstream endpoints without having to run the registration and login steps every time.
+
+**Storing environment-specific IDs for reuse across workflows.** If your test environment contains seed data (a known product ID, a fixed user account, a pre-created order), store those IDs in memory (for example `seed:productId`) and reference them in workflow body fields or path parameters. This keeps your `workflow.json` files generic and environment-agnostic.
+
+<Tip>
+  Use the `global:` scope for values that should survive across multiple workflow runs and not be cleared when you run `jetic simulate workflow --clear-memory`. The `--clear-memory` flag only clears the `workflow:` scope, leaving `global:` entries intact so your persistent seeds and tokens remain available.
+</Tip>

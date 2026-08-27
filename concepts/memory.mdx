@@ -1,0 +1,199 @@
+---
+title: "Jetic Memory: Persistent State Across Workflow Steps"
+sidebarTitle: "Memory"
+description: "Jetic Memory is a scoped key-value store that captures response values from API calls and injects them into subsequent workflow steps automatically."
+---
+
+API workflows are inherently stateful. A login step produces an access token that every subsequent authenticated request needs. A resource creation step produces an ID that a fetch or delete step must reference. Jetic Memory is the mechanism that bridges these steps — a scoped key-value store that captures values from API responses and makes them available for injection into later requests, all without you having to wire anything up manually.
+
+## What Is Memory?
+
+Jetic Memory is a flat key-value store persisted to `.jetic/memory.json` in your project root. Every value is stored under a `scope:key` identifier, where the scope groups related values (e.g., `workflow` for runtime-captured tokens, `global` for pre-seeded constants). During workflow execution, Jetic reads from and writes to this file as each step runs.
+
+You can inspect the current contents at any time with `jetic memory`, add entries manually with `jetic memory add`, or clear everything with `jetic memory clear`.
+
+## Memory Scopes
+
+The `scope:key` format separates memory into named namespaces. This lets you distinguish between values that should survive across multiple runs and values that are only meaningful during the current execution.
+
+| Scope | Lifetime | Typical use |
+|---|---|---|
+| `workflow` | Current run (reset when `--clear-memory` is passed) | Captured tokens, IDs, and generated values from the active workflow |
+| `global` | Persistent until explicitly cleared | Pre-seeded admin credentials, API keys, fixed test data |
+
+**Examples:**
+
+- `workflow:accessToken` — a JWT captured from a login response
+- `workflow:orderId` — an order ID captured after a POST to `/api/orders`
+- `global:adminEmail` — a fixed admin email seeded before running workflows
+- `global:apiKey` — a stable API key for integration tests
+
+## How Values Are Captured
+
+Each workflow step can declare a `capture` map that tells Jetic which fields to read from the response body and where to store them. The map key is the `scope:key` destination in memory; the value is a dot-notation path into the response JSON.
+
+```json
+{
+  "name": "Log in",
+  "method": "POST",
+  "path": "/api/auth/login",
+  "body": {
+    "email": "alice@example.com",
+    "password": "hunter2"
+  },
+  "capture": {
+    "workflow:accessToken": "data.accessToken",
+    "workflow:userId": "data.userId"
+  },
+  "expectStatus": 200
+}
+```
+
+After this step executes successfully, Jetic reads `response.data.accessToken` and `response.data.userId` from the JSON response body and writes them to `.jetic/memory.json` under `workflow:accessToken` and `workflow:userId` respectively.
+
+Capture only runs when the step **passes** (i.e., the response status matches `expectStatus`). This prevents partial or error responses from polluting memory.
+
+### Capturing Request Body Fields
+
+You can also capture request body fields *before* the HTTP call using `captureInput`. This is useful for saving faker-generated values so that later steps can reference the exact email or name that was used:
+
+```json
+{
+  "name": "Register user",
+  "method": "POST",
+  "path": "/api/auth/register",
+  "body": {
+    "email": "{{faker.internet.email}}",
+    "name": "{{faker.person.fullName}}"
+  },
+  "captureInput": {
+    "workflow:registeredEmail": "email"
+  },
+  "expectStatus": 201
+}
+```
+
+The `captureInput` map reads fields from the **resolved** request body (after all templates have been evaluated) and stores them in memory before sending the request.
+
+## How Values Are Injected
+
+Once a value is stored in memory, any subsequent workflow step can read it by referencing its `scope:key` identifier inside double curly braces: `{{workflow:accessToken}}`.
+
+You can inject values into:
+
+- **Request headers** — via the `inject` map with a `header:` prefix
+- **Request body fields** — via the `inject` map with a `body:` prefix, or directly inside the `body` object as a template string
+- **URL path parameters** — via template strings inside the `path` field
+
+```json
+{
+  "name": "Fetch my orders",
+  "method": "GET",
+  "path": "/api/users/{{workflow:userId}}/orders",
+  "inject": {
+    "header:Authorization": "Bearer {{workflow:accessToken}}"
+  },
+  "expectStatus": 200
+}
+```
+
+Jetic resolves all `{{...}}` placeholders before constructing the HTTP request.
+
+## Template Syntax
+
+Jetic supports two categories of placeholder in any string field of a workflow step:
+
+### Memory references — `{{scope:key}}`
+
+Reads the stored value for `key` within `scope` from `.jetic/memory.json`.
+
+```
+{{workflow:accessToken}}   → eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+{{workflow:orderId}}       → ord_a1b2c3d4
+{{global:adminEmail}}      → admin@myshop.dev
+```
+
+### Faker templates — `{{faker.x.y}}`
+
+Generates a random value by calling the corresponding [Faker.js](https://fakerjs.dev/) function. This lets you create realistic, unique test data on every run without hard-coding fixture values.
+
+```
+{{faker.internet.email}}          → lena.wright@example.net
+{{faker.internet.password}}       → K8#mN2pQ
+{{faker.person.fullName}}         → Carlos Mendez
+{{faker.string.uuid}}             → 550e8400-e29b-41d4-a716-446655440000
+{{faker.number.int}}              → 42
+```
+
+You can mix both types within a single string:
+
+```json
+{
+  "body": {
+    "email": "{{faker.internet.email}}",
+    "referredBy": "{{global:adminEmail}}"
+  }
+}
+```
+
+## Persisted vs Runtime Memory
+
+<Info>
+  The distinction between `workflow` and `global` scope is purely conventional — Jetic does not enforce different lifetimes automatically. The difference is driven by how you use `--clear-memory`.
+</Info>
+
+- **`workflow` scope** is intended for values captured during a single run. When you pass `--clear-memory` to `jetic simulate workflow`, the entire memory store (including `workflow` scope) is wiped before execution starts, ensuring a clean slate.
+- **`global` scope** is intended for values you seed manually (via `jetic memory add`) and want to reuse across multiple workflow runs without re-entering them. Because `--clear-memory` clears all scopes, you should only use this flag when you are sure you want to discard global values too.
+
+If you omit `--clear-memory`, all previously captured values remain in `.jetic/memory.json` and are available to the current run.
+
+## Inspecting Memory
+
+**From the CLI**, run `jetic memory` to see a table of all stored entries:
+
+```bash
+jetic memory
+```
+
+```
+┌─────┬──────────────────────────┬──────────────────────────────────────────────┐
+│ S/N │ KEY                      │ TEXT                                         │
+├─────┼──────────────────────────┼─────────────────────────────────────────────-┤
+│ 1   │ workflow:accessToken     │ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...     │
+│ 2   │ workflow:userId          │ usr_f3a9c201                                 │
+│ 3   │ workflow:orderId         │ ord_a1b2c3d4                                 │
+│ 4   │ global:adminEmail        │ admin@myshop.dev                             │
+└─────┴──────────────────────────┴─────────────────────────────────────────────-┘
+```
+
+**From Jetic Studio**, navigate to the `/memory` page to browse, search, and manage stored entries visually.
+
+**To add an entry interactively:**
+
+```bash
+jetic memory add
+# Key/Identifier: global:adminEmail
+# Text: admin@myshop.dev
+```
+
+**To clear all entries:**
+
+```bash
+jetic memory clear
+```
+
+Here is an example of what `.jetic/memory.json` looks like after a workflow run:
+
+```json
+{
+  "workflow": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJ1c3JfZjNhOWMyMDEifQ.sig",
+    "userId": "usr_f3a9c201",
+    "orderId": "ord_a1b2c3d4",
+    "registeredEmail": "lena.wright@example.net"
+  },
+  "global": {
+    "adminEmail": "admin@myshop.dev"
+  }
+}
+```

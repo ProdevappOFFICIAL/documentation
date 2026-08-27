@@ -1,0 +1,158 @@
+---
+title: "Run Your First API Scan with Jetic"
+sidebarTitle: "First Scan"
+description: "Step-by-step guide to scanning an Express TypeScript backend with Jetic for the first time — from installation to reviewing your Behavioral Model."
+---
+
+Scanning your Express TypeScript project with Jetic takes about two minutes. Jetic statically analyzes your source code without starting your server, walks the Express router tree, and writes a versioned Behavioral Model to `.jetic/model.json`. That model becomes the foundation for endpoint inspection, simulation, and AI-powered workflow testing. This guide walks you through the entire process from a fresh install to reviewing your first model.
+
+## What You'll Need
+
+- **Node.js 20 or later** — check with `node --version`
+- **An Express TypeScript project** — with a `tsconfig.json` in the project root
+- **An AI API key** — from [OpenAI](https://platform.openai.com/api-keys) or [OpenRouter](https://openrouter.ai/keys) (optional for route discovery, required for parameter extraction and workflow generation)
+
+<Steps>
+
+  <Step title="Install Jetic globally">
+    Install the `@jetic/cli` package globally so the `jetic` command is available in any project directory:
+
+    ```bash
+    npm install -g @jetic/cli
+    ```
+
+    Verify the installation:
+
+    ```bash
+    jetic --version
+    ```
+  </Step>
+
+  <Step title="Navigate to your project">
+    Move into the root of your Express TypeScript project — the directory that contains your `tsconfig.json` and `package.json`:
+
+    ```bash
+    cd my-express-app
+    ```
+  </Step>
+
+  <Step title="Initialize Jetic">
+    Run `jetic init` to start the interactive setup wizard. Jetic prompts you for an AI provider, model name, and API key, then creates `.jetic/config.json` and appends your key to `.env`:
+
+    ```bash
+    jetic init
+    ```
+
+    Example session:
+
+    ```
+    Welcome to Jetic Initialization
+
+    AI Provider [default: openrouter]: openrouter
+    Model name [default: meta-llama/llama-3.1-8b-instruct]: 
+    API Key: sk-or-xxxxxxxx
+
+    ✓ Saved API key to .env file as OPENROUTER_API_KEY
+
+    ✓ Successfully initialized Jetic in /my-express-app/.jetic
+    ```
+
+    Press Enter at any prompt to accept the default value. The defaults use OpenRouter with `meta-llama/llama-3.1-8b-instruct` — a cost-efficient model that works well for most projects.
+
+    <Note>
+      If you prefer OpenAI, enter `openai` at the provider prompt and `gpt-4o` at the model prompt. Jetic will set `apiKeyEnvVar` to `OPENAI_API_KEY` automatically.
+    </Note>
+  </Step>
+
+  <Step title="Run the scan">
+    Run `jetic scan` to start static analysis. Jetic reads your TypeScript source, walks your router registrations, and calls the AI to extract parameter schemas:
+
+    ```bash
+    jetic scan
+    ```
+
+    Example output:
+
+    ```
+    Jetic API Intelligence
+    Scanning project...
+
+    ✓ Discovered 9 endpoints
+    Behavioral model generated at /my-express-app/.jetic/model.json
+    ```
+
+    Scan time depends on project size and AI model speed — most projects complete in under 30 seconds.
+  </Step>
+
+  <Step title="List discovered endpoints">
+    Run `jetic inspect` to print a summary of all endpoints discovered in the last scan:
+
+    ```bash
+    jetic inspect
+    ```
+
+    Example output:
+
+    ```
+    Model Version: 0.2
+    Endpoints (9):
+
+    GET    /health
+    GET    /api/users
+    GET    /api/users/:id
+    POST   /api/users
+    PUT    /api/users/:id
+    DELETE /api/users/:id
+    GET    /api/orders
+    GET    /api/orders/:id
+    POST   /api/orders
+    ```
+  </Step>
+
+  <Step title="Inspect a specific endpoint">
+    Use `jetic inspect endpoint` with the HTTP method and path to view the source location of a specific route:
+
+    ```bash
+    jetic inspect endpoint GET /api/users
+    ```
+
+    Example output:
+
+    ```
+    GET /api/users
+
+    Source:
+      src/routes/users.ts:8
+    ```
+
+    Jetic links every discovered endpoint back to the exact file and line number in your source code, making it easy to cross-reference the model with your implementation.
+  </Step>
+
+</Steps>
+
+## Understanding the Output
+
+After a successful scan, `.jetic/model.json` contains a complete snapshot of your API's behavior at version `0.2` of the Behavioral Model schema. Key sections include:
+
+- **`project`** — name, language, and framework detected from your project
+- **`endpoints`** — every discovered route with its HTTP method, path, source reference, middleware chain, parameters, request body schema, and response definitions
+- **`dependencies`** — data flow relationships between endpoints (e.g., `POST /auth/login` produces a token consumed by `GET /orders`)
+- **`environments`** — target server definitions you add manually for simulation
+- **`securitySchemes`** — named auth scheme definitions referenced by endpoint `security` fields
+
+The model is a plain JSON file — you can edit it directly to add environments, refine schemas, or annotate endpoints that the scanner couldn't fully analyze.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Simulate Endpoints" icon="play" href="/cli/simulate-endpoint">
+    Run individual endpoint simulations to verify request/response behavior against a live server.
+  </Card>
+  <Card title="Workflow Testing" icon="diagram-project" href="/guides/workflow-testing">
+    Use AI to generate and execute multi-step workflow tests that chain endpoints together.
+  </Card>
+</CardGroup>
+
+<Tip>
+  Open **Jetic Studio** with `jetic dev` to explore your behavioral model in a browser-based dashboard. The `/model` page gives you a searchable endpoint browser, and the `/inspect` page includes an inline source viewer and live simulator — all backed by the same `model.json` your CLI uses.
+</Tip>

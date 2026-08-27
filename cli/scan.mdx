@@ -1,0 +1,68 @@
+---
+title: "jetic scan: Discover and Analyze Your Express API"
+sidebarTitle: "scan"
+description: "jetic scan performs static AST analysis of your Express TypeScript project and writes a versioned Behavioral Model to .jetic/model.json."
+---
+
+`jetic scan` reads your TypeScript source files without running your server and builds a complete picture of your API. It discovers every Express route registration, follows your controllers and services, extracts request parameters, body shapes, and middleware chains, and then saves the result as a structured JSON file called the **Behavioral Model**. Every other Jetic command — `inspect`, `simulate`, and `dev` — reads from this model.
+
+## Usage
+
+```bash
+jetic scan
+```
+
+Run this command from the root of your Express TypeScript project. No build step is required — Jetic analyzes your source files directly.
+
+## Prerequisites
+
+You must run [`jetic init`](/cli/init) before scanning. The scanner reads `.jetic/config.json` to locate your project root and AI provider settings.
+
+## What It Does
+
+<Steps>
+  <Step title="Route Discovery">
+    The scanner traverses your source tree looking for Express router and app registrations. It identifies every `app.get()`, `router.post()`, and equivalent calls to build an initial list of routes with their HTTP methods and path patterns.
+  </Step>
+  <Step title="Import Resolution">
+    For each route handler, Jetic follows `import` and `require` statements up to two levels deep. This lets it find the controllers and middleware functions that actually process a request, even when your routes are split across multiple files.
+  </Step>
+  <Step title="AI Analysis">
+    Jetic sends the extracted handler source context to your configured AI model. The model infers request body shapes, query parameters, path parameters, response schemas, and behavioral constraints that are not always explicit in the code — such as uniqueness rules, ownership checks, and status code semantics.
+  </Step>
+  <Step title="Model Writing">
+    The complete Behavioral Model is serialized and saved to `.jetic/model.json`. The file is versioned (currently `0.2`) and timestamped with a `generatedAt` field so you always know when it was last updated.
+  </Step>
+</Steps>
+
+## Example Terminal Output
+
+```
+Jetic API Intelligence
+Scanning project...
+
+✓ Discovered 14 endpoints
+Behavioral model generated at .jetic/model.json
+```
+
+## Output
+
+After scanning, `.jetic/model.json` contains a complete snapshot of your API's behavior, including:
+
+- **Project metadata** — name, language, and framework
+- **Environments** — base URLs for local, staging, and production
+- **Security schemes** — authentication and authorization definitions
+- **Endpoints** — every discovered route with its method, path, source location, middleware, parameters, request body, response schemas, and constraints
+- **Dependencies** — data-flow relationships between endpoints (e.g., a login endpoint that produces a token consumed by authenticated routes)
+- **Workflows** — saved multi-step test workflow definitions
+- **State machines** — resource lifecycle transitions
+
+Use [`jetic inspect`](/cli/inspect) to browse the discovered endpoints, or open [`jetic dev`](/cli/dev) to explore the full model in Jetic Studio.
+
+<Tip>
+  Re-run `jetic scan` whenever you add, remove, or significantly change routes. The model is fully regenerated each time, so it always reflects your current codebase.
+</Tip>
+
+<Warning>
+  Jetic currently supports **TypeScript only**. Plain JavaScript Express projects are not supported. Make sure your project has `.ts` source files before running `jetic scan`.
+</Warning>

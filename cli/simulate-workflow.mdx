@@ -1,0 +1,225 @@
+---
+title: "jetic simulate workflow: Run AI-Generated API Workflows"
+sidebarTitle: "simulate workflow"
+description: "jetic simulate workflow uses AI to generate and execute multi-step API test workflows, automatically injecting captured tokens into subsequent requests."
+---
+
+`jetic simulate workflow` goes beyond testing individual endpoints — it simulates complete user journeys. You describe a goal in plain English, and Jetic uses your configured AI model to design a logical sequence of HTTP requests that covers that journey end-to-end. As each step executes, Jetic captures tokens and IDs from responses and automatically injects them into subsequent requests, so a login token obtained in step 1 flows seamlessly into the `Authorization` header of step 3.
+
+## Usage
+
+```bash
+jetic simulate workflow [flags]
+```
+
+## Flags
+
+<ParamField query="--goal" type="string" default="Full user journey">
+  Describe the workflow goal in natural language. Jetic passes this string to the AI model as the test objective when generating the workflow. Be specific to get better step sequences — for example, `"Admin creates a product, customer adds it to cart, and checks out"`.
+</ParamField>
+
+<ParamField query="--env" type="string">
+  The name of the environment to use from your `model.json` (e.g., `local`, `staging`). If omitted, Jetic selects the first environment defined in the model, or defaults to `http://localhost:3000` if none are configured.
+</ParamField>
+
+<ParamField query="--workflow" type="string">
+  Path to an existing `workflow.json` file to execute instead of generating a new one. Use this to re-run a previously saved or manually authored workflow.
+</ParamField>
+
+<ParamField query="--generate-only" type="boolean">
+  Generate and save `workflow.json` without executing any HTTP requests. Use this to review and edit the AI-generated plan before committing to a run.
+</ParamField>
+
+<ParamField query="--clear-memory" type="boolean" default="false">
+  Clear all entries from Jetic's memory store before the workflow begins. Use this to ensure a clean state when re-running a workflow that captured tokens or IDs in a previous run.
+</ParamField>
+
+## Example: Generate and Run
+
+Describe a goal and let Jetic generate and immediately execute the workflow:
+
+```bash
+jetic simulate workflow --goal "Admin creates exam, student enrolls and gets results"
+```
+
+```
+  JETIC   Workflow Runner
+
+  Model: express-shop • 14 endpoints
+
+  ✓ Workflow generated: Admin Exam Lifecycle  (8 steps)
+     Saved to .jetic/workflow.json
+
+  🌍 Environment: local  http://localhost:4000
+
+  ✓ Backend is active
+
+  Admin Exam Lifecycle
+  Full end-to-end test: admin creates exam, student enrolls, completes, and views results
+
+  8 steps
+  ┌─ POST /api/auth/login            Admin Login
+  ├─ POST /api/exams                 Create Exam
+  ├─ GET  /api/exams/:id             Verify Exam
+  ├─ POST /api/auth/register         Register Student
+  ├─ POST /api/auth/login            Student Login
+  ├─ POST /api/exams/:id/enroll      Student Enroll
+  ├─ POST /api/exams/:id/submit      Submit Answers
+  └─ GET  /api/exams/:id/results     Get Results
+
+  🚀 Executing workflow steps...
+
+  ✓ Step 1/8  POST   /api/auth/login        200  89ms
+  │   💾 captured workflow:accessToken ← data.accessToken
+  │   💾 captured workflow:adminId ← data.userId
+
+  ✓ Step 2/8  POST   /api/exams             201  112ms
+  │   📥 inject Authorization: Bearer eyJhbGci...
+  │   💾 captured workflow:examId ← data.id
+
+  ✓ Step 3/8  GET    /api/exams/:id         200  76ms
+  │   📥 inject Authorization: Bearer eyJhbGci...
+
+  ✓ Step 4/8  POST   /api/auth/register     201  93ms
+  │   💾 captured workflow:studentEmail ← data.email
+
+  ✓ Step 5/8  POST   /api/auth/login        200  84ms
+  │   💾 captured workflow:studentToken ← data.accessToken
+
+  ✓ Step 6/8  POST   /api/exams/:id/enroll  201  105ms
+  │   📥 inject Authorization: Bearer eyJhbGci...
+
+  ✓ Step 7/8  POST   /api/exams/:id/submit  200  134ms
+  │   📥 inject Authorization: Bearer eyJhbGci...
+
+  ✓ Step 8/8  GET    /api/exams/:id/results 200  98ms
+  │   📥 inject Authorization: Bearer eyJhbGci...
+
+  ✅ Workflow Complete!  2.45s
+
+  8 passed
+
+  💾 Jetic Memory  (captured during run)
+    workflow:accessToken  = eyJhbGciOiJIUzI1NiIsInR5cCI6...
+    workflow:examId       = exam_7c2d9e
+    workflow:studentToken = eyJhbGciOiJIUzI1NiIsInR5cCI6...
+```
+
+## Example: Use an Existing Workflow
+
+Skip generation and execute a saved or manually authored `workflow.json` directly:
+
+```bash
+jetic simulate workflow --workflow .jetic/workflow.json
+```
+
+## Workflow JSON Format
+
+Generated workflows are saved to `.jetic/workflow.json`. You can edit this file manually or author one from scratch. Each step in the `steps` array describes one HTTP request:
+
+```json
+{
+  "name": "User Auth and Order Flow",
+  "description": "Login, create an order, then retrieve it",
+  "generatedAt": "2024-11-15T10:00:00.000Z",
+  "steps": [
+    {
+      "name": "Login",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "expectStatus": 200,
+      "body": {
+        "email": "user@example.com",
+        "password": "secret123"
+      },
+      "capture": {
+        "workflow:accessToken": "data.accessToken"
+      }
+    },
+    {
+      "name": "Create Order",
+      "method": "POST",
+      "path": "/api/orders",
+      "expectStatus": 201,
+      "inject": {
+        "header:Authorization": "Bearer {{workflow:accessToken}}"
+      },
+      "body": {
+        "productId": "prod_abc123",
+        "quantity": 2
+      },
+      "capture": {
+        "workflow:orderId": "data.id"
+      }
+    },
+    {
+      "name": "Get Order",
+      "method": "GET",
+      "path": "/api/orders/:id",
+      "expectStatus": 200,
+      "inject": {
+        "header:Authorization": "Bearer {{workflow:accessToken}}"
+      },
+      "body": {
+        "id": "{{workflow:orderId}}"
+      }
+    }
+  ]
+}
+```
+
+### Step Fields
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | string | Human-readable label shown in terminal output |
+| `method` | string | HTTP method (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`) |
+| `path` | string | Route path; use `:param` for path variables resolved from `body` |
+| `expectStatus` | number | Expected HTTP status code (default: `200`) |
+| `body` | object | Request body fields; supports `{{faker.x.y}}` and `{{scope:key}}` templates |
+| `inject` | object | Memory keys or templates to inject as headers or body fields before the request |
+| `capture` | object | Response fields to capture into memory after a successful step |
+| `captureInput` | object | Resolved request body fields to save to memory before the HTTP call |
+
+## Token Injection
+
+Use `{{scope:key}}` placeholders anywhere in `body` values or `inject` targets. Jetic resolves them from memory at runtime:
+
+```json
+{
+  "inject": {
+    "header:Authorization": "Bearer {{workflow:accessToken}}"
+  }
+}
+```
+
+You can also use Faker.js to generate realistic test data on the fly:
+
+```json
+{
+  "body": {
+    "email": "{{faker.internet.email}}",
+    "name": "{{faker.person.fullName}}"
+  }
+}
+```
+
+## `--generate-only` Mode
+
+Use `--generate-only` when you want to review the AI-generated plan before executing it. Jetic writes `workflow.json` and prints the step graph, but makes no HTTP requests. You can then edit the file and run it with `--workflow`:
+
+```bash
+# Step 1: Generate only
+jetic simulate workflow --goal "Customer completes checkout" --generate-only
+
+# Step 2: Review and edit .jetic/workflow.json, then run
+jetic simulate workflow --workflow .jetic/workflow.json
+```
+
+<Warning>
+  Your backend server must be running before executing a workflow. Jetic checks the target environment's base URL for reachability and stops with a clear error if the server is unreachable. If an auth step (`/login`, `/register`, or `/auth`) fails, Jetic halts the entire workflow to prevent cascading failures from missing tokens.
+</Warning>
+
+<Tip>
+  Always use `--generate-only` first when testing a new goal. Reviewing the generated `workflow.json` before running lets you catch incorrect step ordering, missing `capture` fields, or wrong `expectStatus` values without burning API quota on a broken run.
+</Tip>

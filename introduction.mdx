@@ -1,0 +1,65 @@
+---
+title: "Jetic: AI-Native API Behavior Testing Platform"
+sidebarTitle: "Introduction"
+description: "Learn how Jetic discovers your API structure, extracts business logic constraints, and runs intelligent multi-step tests without touching your running server."
+---
+
+Jetic is a developer platform that understands your Express TypeScript API from the source code up. Instead of requiring you to write tests manually or intercept live traffic, Jetic reads your project's Abstract Syntax Tree, builds a precise Behavioral Model of every endpoint, and lets AI generate and execute end-to-end workflow tests against your running server. The result is deep API confidence with a fraction of the setup cost.
+
+<Note>
+  Jetic requires **Node.js 20 or later**. Make sure your environment meets this requirement before installing.
+</Note>
+
+## What Jetic Does
+
+Jetic follows a four-phase pipeline from raw source code to actionable test results.
+
+<Steps>
+  <Step title="Scan">
+    Jetic's scanner parses your TypeScript source files using `ts-morph` AST analysis. It detects every Express route registration — including nested routers and middleware mounts — without executing a single line of your application code.
+  </Step>
+  <Step title="Model">
+    Discovered endpoints are normalized into a versioned **Behavioral Model** (`model.json`). Each entry records the HTTP method, path, source file and line number, middleware stack, inferred parameters, request and response schemas, and business logic constraints extracted from handler code.
+  </Step>
+  <Step title="Simulate">
+    You target a running server and Jetic simulates individual endpoints or full multi-step workflows. The AI interprets your Behavioral Model to generate realistic request payloads, sequences calls in the correct order, and injects captured tokens (such as JWTs) into subsequent requests automatically.
+  </Step>
+  <Step title="Report">
+    Each simulation run produces structured output showing request details, response status codes, extracted data, and any constraint violations. Workflow runs are fully inspectable in both the terminal and Jetic Studio.
+  </Step>
+</Steps>
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Static Analysis" icon="code">
+    Jetic uses AST parsing to inspect your TypeScript source without running it. It resolves nested routers, follows imports into controllers and services, and extracts inline business logic constraints such as minimum lengths and role requirements.
+  </Card>
+  <Card title="Behavioral Model" icon="diagram-project">
+    Every scan produces a versioned `model.json` file — a machine-readable map of your entire API surface. It captures methods, paths, parameters, security schemes, middleware, source provenance, and inferred state transitions.
+  </Card>
+  <Card title="Workflow Simulation" icon="arrows-spin">
+    Describe a user journey in natural language and Jetic generates a `workflow.json` execution graph. The AI sequences requests correctly, stores tokens in a scoped memory store, and injects them into downstream calls automatically.
+  </Card>
+  <Card title="Jetic Studio" icon="display">
+    Launch a local browser dashboard with `jetic dev`. Studio gives you a visual endpoint browser, a source code viewer with exact file and line references, an interactive live simulator, and a memory store inspector — all running entirely on your machine.
+  </Card>
+</CardGroup>
+
+## How It Works
+
+When you run `jetic scan`, Jetic locates your `tsconfig.json` and uses it to load the full TypeScript project graph. The scanner walks every source file, identifies calls to `app.use`, `router.get`, `router.post`, and related Express methods, and resolves the complete path for each route — including prefix strings from parent `app.use` mounts.
+
+For each discovered handler, Jetic follows imports into controller files and service modules to gather parameter names, expected types, and inline validation logic. Conditions like `if (password.length < 8)` are captured as constraints (minimum length: 8) and stored in the model alongside the endpoint they govern.
+
+All of this data is written to `.jetic/model.json` as a structured, versioned schema. You can inspect the model directly with `jetic inspect`, or open Jetic Studio to browse it visually.
+
+When you simulate a workflow, the AI reads `model.json` and produces a `workflow.json` execution graph — a sequence of HTTP requests in the correct dependency order. Jetic executes each step, captures values like access tokens from response bodies, stores them in `.jetic/memory.json` using scoped keys, and injects them as headers or body fields in subsequent requests using the `{{scope:key}}` template syntax.
+
+## What Jetic Is Not
+
+Jetic is purpose-built for behavioral understanding and AI-driven workflow testing. It is important to understand its boundaries:
+
+- **Not a proxy or traffic interceptor.** Jetic reads source code, not network traffic. It does not sit between your client and server.
+- **Not a load tester.** Jetic is not designed for performance benchmarking or high-concurrency stress testing.
+- **Not a mock server.** Jetic simulates requests against your actual running server. It does not generate fake server responses.

@@ -1,0 +1,249 @@
+---
+title: "End-to-End Workflow Testing with Jetic AI"
+sidebarTitle: "Workflow Testing"
+description: "Learn how to use jetic simulate workflow to generate and run AI-powered multi-step API tests that chain endpoints, capture tokens, and verify user journeys."
+---
+
+Most API bugs don't live in individual endpoints — they emerge in the spaces between them. A user who registers successfully but can't log in, or a token that's captured but never injected into the next request, or an order created under the wrong user ID: these are workflow-level failures that single-endpoint tests miss entirely. Jetic's workflow runner lets you describe a user journey in plain English, generate a structured test plan via AI, execute it step-by-step against your live server, and capture the tokens and IDs that flow between steps automatically.
+
+## What Is Workflow Testing?
+
+A workflow is a sequence of HTTP calls that represents a complete user journey — for example, Register → Login → Create Order → Fetch Order → Cancel Order. Each step can capture values from the response (like a JWT access token or a newly-created resource ID) and inject them into subsequent requests as headers or body fields. This chained state is stored in Jetic's memory system between steps, scoped under a `workflow:` namespace.
+
+Workflow testing matters because:
+
+- **Auth flows must be tested end-to-end.** A valid token from a login step is required by every protected endpoint that follows.
+- **Resource IDs are dynamic.** You can't hardcode an order ID into a test — it must be captured from the creation step.
+- **State transitions have preconditions.** Cancelling an order that doesn't exist, or updating a resource before creating it, reveals real bugs.
+
+## Prerequisites
+
+Before running a workflow simulation:
+
+- Run `jetic scan` to generate `.jetic/model.json` — the workflow generator reads your endpoint catalog to build the plan.
+- Start your backend server so Jetic can execute HTTP requests against it. Jetic checks the target URL for a live response before executing any steps.
+- Confirm AI is configured with `jetic config`. Workflow generation requires an AI provider.
+
+## Steps
+
+<Steps>
+
+  <Step title="Describe your goal">
+    Pass your workflow goal as a plain-English string with the `--goal` flag. Jetic sends your goal, the endpoint catalog from `model.json`, and a structured prompt to your configured AI model, which returns a `workflow.json` definition:
+
+    ```bash
+    jetic simulate workflow --goal "User registers, logs in, creates an order, then fetches it"
+    ```
+
+    Jetic prints a spinner while the AI generates the workflow, then saves the result to `.jetic/workflow.json` and begins execution.
+  </Step>
+
+  <Step title="Review the generated workflow">
+    Before execution starts, Jetic renders the workflow graph in your terminal. The generated `.jetic/workflow.json` looks like this:
+
+    ```json .jetic/workflow.json
+    {
+      "name": "User Registration and Order Lifecycle",
+      "description": "User registers, logs in, creates an order, then fetches it",
+      "generatedAt": "2024-01-15T10:30:00.000Z",
+      "steps": [
+        {
+          "name": "Register User",
+          "method": "POST",
+          "path": "/api/auth/register",
+          "body": {
+            "email": "{{faker.internet.email}}",
+            "password": "{{faker.internet.password}}",
+            "name": "{{faker.person.fullName}}"
+          },
+          "captureInput": {
+            "workflow:userEmail": "email",
+            "workflow:userPassword": "password"
+          },
+          "expectStatus": 201
+        },
+        {
+          "name": "Login",
+          "method": "POST",
+          "path": "/api/auth/login",
+          "body": {
+            "email": "{{workflow:userEmail}}",
+            "password": "{{workflow:userPassword}}"
+          },
+          "capture": {
+            "workflow:accessToken": "data.accessToken"
+          },
+          "expectStatus": 200
+        },
+        {
+          "name": "Create Order",
+          "method": "POST",
+          "path": "/api/orders",
+          "inject": {
+            "header:Authorization": "Bearer {{workflow:accessToken}}"
+          },
+          "body": {
+            "items": [{ "productId": "abc-123", "quantity": 2 }]
+          },
+          "capture": {
+            "workflow:orderId": "orderId"
+          },
+          "expectStatus": 201
+        }
+      ]
+    }
+    ```
+  </Step>
+
+  <Step title="Execute the workflow">
+    Jetic executes each step sequentially. For every step it shows the HTTP method, path, status code, execution time, injected headers, and any values captured into memory:
+
+    ```
+      JETIC  Workflow Runner
+
+      Model: express-shop • 9 endpoints
+
+      🌍 Environment: local  http://localhost:3000
+
+      ✓ Backend is active
+
+      User Registration and Order Lifecycle
+      3 steps
+
+      ┌─ POST /api/auth/register  Register User
+      ├─ POST /api/auth/login  Login
+      └─ POST /api/orders  Create Order
+
+      🚀 Executing workflow steps...
+
+      ✓ Step 1/3  POST   /api/auth/register  201  142ms
+      │   Register User
+      │   💾 captured workflow:userEmail ← request.email
+      │   💾 captured workflow:userPassword ← request.password
+
+      ✓ Step 2/3  POST   /api/auth/login  200  98ms
+      │   Login
+      │   💾 captured workflow:accessToken ← data.accessToken
+
+      ✓ Step 3/3  POST   /api/orders  201  210ms
+      │   Create Order
+      │   📥 inject Authorization: Bearer eyJhbGci...
+      │   💾 captured workflow:orderId ← orderId
+
+      ✅ Workflow Complete!  0.45s
+
+      3 passed
+    ```
+  </Step>
+
+  <Step title="Inspect captured memory">
+    After a workflow run, use `jetic memory` to see all values captured into the Jetic memory store. These persist between runs unless you explicitly clear them:
+
+    ```bash
+    jetic memory
+    ```
+
+    Example output:
+
+    ```
+    ┌─────┬──────────────────────────┬────────────────────────────────┐
+    │ S/N │ KEY                      │ TEXT                           │
+    ├─────┼──────────────────────────┼────────────────────────────────┤
+    │   1 │ workflow:userEmail       │ alice@example.com              │
+    │   2 │ workflow:userPassword    │ s3cur3P@ss!                    │
+    │   3 │ workflow:accessToken     │ eyJhbGciOiJIUzI1NiIsInR5...   │
+    │   4 │ workflow:orderId         │ ORD-4827                       │
+    └─────┴──────────────────────────┴────────────────────────────────┘
+    ```
+  </Step>
+
+</Steps>
+
+## Understanding the Workflow JSON
+
+The workflow JSON schema supports several fields that control data flow between steps:
+
+```json
+{
+  "name": "Step label shown in terminal output",
+  "method": "POST",
+  "path": "/api/resource",
+  "description": "Optional human-readable explanation of what this step tests",
+
+  "body": {
+    "email": "{{faker.internet.email}}",
+    "name": "{{faker.person.fullName}}",
+    "role": "admin"
+  },
+
+  "captureInput": {
+    "workflow:registeredEmail": "email"
+  },
+
+  "capture": {
+    "workflow:accessToken": "data.accessToken",
+    "workflow:userId": "data.user.id"
+  },
+
+  "inject": {
+    "header:Authorization": "Bearer {{workflow:accessToken}}",
+    "body:userId": "{{workflow:userId}}"
+  },
+
+  "expectStatus": 201
+}
+```
+
+| Field | Purpose |
+|---|---|
+| `body` | Request body fields. Values support `{{faker.x.y}}` and `{{scope:key}}` templates. |
+| `captureInput` | Saves resolved request body fields into memory **before** the HTTP call — useful for preserving faker-generated values (email, password) for later re-use. |
+| `capture` | Reads dot-notation paths from the **response** body and saves them into memory after a successful step. |
+| `inject` | Reads memory keys and injects them as request headers (`header:` prefix) or body fields (`body:` prefix) before the HTTP call. Supports template strings like `"Bearer {{workflow:accessToken}}"`. |
+| `expectStatus` | The HTTP status code that marks this step as passing. Defaults to `200`. Use `201` for creation endpoints and `204` for deletes. |
+
+## Using an Existing Workflow
+
+If you've already generated a `workflow.json` and want to re-run it without regenerating, pass the `--workflow` flag with the file path:
+
+```bash
+jetic simulate workflow --workflow .jetic/workflow.json
+```
+
+You can also edit `workflow.json` manually between runs to adjust steps, tweak request bodies, or add new capture targets — then re-run with `--workflow` to execute your edited version.
+
+## Using `--generate-only`
+
+The `--generate-only` flag tells Jetic to generate and save `workflow.json` but skip execution. Use this to review and edit the AI-generated plan before running it:
+
+```bash
+jetic simulate workflow --goal "Admin creates a product and a user purchases it" --generate-only
+```
+
+Jetic saves the workflow to `.jetic/workflow.json` and prints the workflow graph, then exits. Open the file, make any adjustments, and run it explicitly:
+
+```bash
+jetic simulate workflow --workflow .jetic/workflow.json
+```
+
+## Troubleshooting 401 Errors
+
+If workflow steps fail with a `401 Unauthorized` status, the most common causes are:
+
+1. **The login step failed.** If the step that produces the token didn't pass, subsequent steps have nothing to inject. Check that your login endpoint path matches what's in the model and that the credentials in the `body` are valid.
+
+2. **The `capture` path is wrong.** The AI generates dot-notation paths based on what it infers from the model's response schema. If your login response returns `{ "token": "..." }` but `capture` references `"data.accessToken"`, the token is never stored. Check the actual response shape and update the `capture` path in `workflow.json`.
+
+3. **The `inject` key doesn't match the captured key.** If the login step captures `"workflow:token"` but the protected step injects `"workflow:accessToken"`, the lookup returns nothing. Ensure the memory key in `capture` exactly matches the key referenced in `inject`.
+
+<Warning>
+  Your backend server must be running before you execute a workflow. Jetic performs a health check against the environment's `baseUrl` before executing any steps. If the server is unreachable, Jetic exits immediately with an error.
+</Warning>
+
+<Tip>
+  Use `--clear-memory` to wipe all stored memory entries before a run. This is useful when you want to start a workflow completely fresh — for example, to test the full registration flow again without stale tokens from a previous run:
+
+  ```bash
+  jetic simulate workflow --goal "Full user journey" --clear-memory
+  ```
+</Tip>

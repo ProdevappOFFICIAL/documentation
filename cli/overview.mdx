@@ -1,0 +1,78 @@
+---
+title: "Jetic CLI Reference: All Commands Overview"
+sidebarTitle: "Overview"
+description: "Complete reference for all Jetic CLI commands — init, scan, inspect, simulate, memory, config, and dev. Run jetic --help for inline help."
+---
+
+The Jetic CLI gives you everything you need to analyze, inspect, and test your Express TypeScript backend from the terminal. After installing the package globally, you can initialize a project, scan its routes into a versioned Behavioral Model, and immediately run AI-generated end-to-end workflow simulations — all without starting a server.
+
+## Installation
+
+Install the CLI globally with npm:
+
+```bash
+npm install -g @jetic/cli
+```
+
+Jetic requires **Node.js 20 or later**. After installation, verify the CLI is available:
+
+```bash
+jetic --version
+```
+
+## Commands Table
+
+| Command | Description | Key Flags |
+|---|---|---|
+| `jetic init` | Interactive setup wizard: configures your AI provider, model, and API key, then creates `.jetic/config.json` | — |
+| `jetic scan` | Performs static AST analysis of your project and writes the Behavioral Model to `.jetic/model.json` | — |
+| `jetic inspect` | Lists all discovered endpoints from `model.json`; drill into a specific route with the `endpoint` subcommand | — |
+| `jetic simulate endpoint` | Sends real HTTP requests to your running server for a single endpoint or all endpoints at once | `--all`, `--verbose` |
+| `jetic simulate workflow` | Uses AI to generate a multi-step workflow test and executes it sequentially against your server | `--goal`, `--env`, `--workflow`, `--generate-only`, `--clear-memory` |
+| `jetic memory` | Lists, adds, or clears scoped key-value entries used to pass data between workflow steps | — |
+| `jetic config` | Displays current configuration; `config ai` subcommand updates your AI provider, model, or API key variable | `--provider`, `--model`, `--key-env` |
+| `jetic dev` | Starts Jetic Studio — a local browser dashboard for exploring your model, running simulations, and inspecting memory | `--port` |
+
+## Global Usage
+
+Get inline help for the CLI or any individual command:
+
+```bash
+# Top-level help
+jetic --help
+
+# Command-specific help
+jetic <command> --help
+
+# Print the installed version
+jetic --version
+```
+
+## Command Pages
+
+<CardGroup cols={2}>
+  <Card title="init" icon="wand-magic-sparkles" href="/cli/init">
+    Run the interactive setup wizard to configure your AI provider and create `.jetic/config.json`.
+  </Card>
+  <Card title="scan" icon="magnifying-glass" href="/cli/scan">
+    Statically analyze your Express TypeScript project and generate the Behavioral Model.
+  </Card>
+  <Card title="inspect" icon="list-ul" href="/cli/inspect">
+    List all discovered endpoints or drill into a specific route's source location and schema.
+  </Card>
+  <Card title="simulate endpoint" icon="bolt" href="/cli/simulate-endpoint">
+    Send real HTTP requests to your running server using discovered endpoint schemas.
+  </Card>
+  <Card title="simulate workflow" icon="diagram-project" href="/cli/simulate-workflow">
+    Generate and execute AI-powered multi-step API test workflows.
+  </Card>
+  <Card title="memory" icon="database" href="/cli/memory">
+    Manage the scoped key-value store used to pass captured values between workflow steps.
+  </Card>
+  <Card title="config" icon="gear" href="/cli/config">
+    View your current configuration and update AI provider settings.
+  </Card>
+  <Card title="dev" icon="browser" href="/cli/dev">
+    Launch Jetic Studio, the local browser-based dashboard for your project.
+  </Card>
+</CardGroup>

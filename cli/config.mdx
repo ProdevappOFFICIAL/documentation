@@ -1,0 +1,89 @@
+---
+title: "jetic config: View and Update AI Configuration"
+sidebarTitle: "config"
+description: "jetic config displays your current Jetic configuration. Use jetic config ai to change your AI provider, model, or API key environment variable."
+---
+
+`jetic config` gives you a quick overview of your current Jetic setup — your project root, the `.jetic/` directory path, and which AI provider and model are active. When you need to switch providers or point Jetic at a different model, use the `config ai` subcommand to update `.jetic/config.json` without re-running the full `init` wizard.
+
+## Commands
+
+### `jetic config` — show current configuration
+
+Prints a formatted table of all active configuration values.
+
+```bash
+jetic config
+```
+
+**Example output:**
+
+```
+Jetic Configuration
+
+┌──────────────────┬────────────────────────────────────────────┐
+│ Key              │ Value                                      │
+├──────────────────┼────────────────────────────────────────────┤
+│ Project Root     │ /home/user/projects/my-api                 │
+│ Jetic Directory  │ /home/user/projects/my-api/.jetic          │
+│ AI Provider      │ openrouter                                 │
+│ AI Model         │ meta-llama/llama-3.1-8b-instruct           │
+│ API Key Env Var  │ OPENROUTER_API_KEY                         │
+└──────────────────┴────────────────────────────────────────────┘
+```
+
+If AI has not been configured yet, the provider, model, and key fields display `Not set`.
+
+---
+
+### `jetic config ai` — update AI settings
+
+Updates the AI provider, model name, and API key environment variable in `.jetic/config.json`. All three flags are required.
+
+```bash
+jetic config ai --provider <provider> --model <model> --key-env <envvar>
+```
+
+## Flags
+
+<ParamField query="--provider" type="string" required>
+  The AI provider to use. Accepted values: `openai` or `openrouter`. Shorthand: `-p`.
+</ParamField>
+
+<ParamField query="--model" type="string" required>
+  The model name to use for AI analysis and workflow generation. Must be a model supported by your chosen provider. Shorthand: `-m`.
+</ParamField>
+
+<ParamField query="--key-env" type="string" required>
+  The name of the environment variable that holds your API key. Jetic reads `process.env[key-env]` at runtime. Shorthand: `-k`.
+</ParamField>
+
+## Examples
+
+### Switch to OpenAI GPT-4o
+
+```bash
+jetic config ai --provider openai --model gpt-4o --key-env OPENAI_API_KEY
+```
+
+Make sure `OPENAI_API_KEY` is set in your environment or `.env` file before running simulations:
+
+```bash
+# .env
+OPENAI_API_KEY=sk-••••••••••••••••
+```
+
+### Switch to OpenRouter with Llama 3.1
+
+```bash
+jetic config ai \
+  --provider openrouter \
+  --model meta-llama/llama-3.1-8b-instruct \
+  --key-env OPENROUTER_API_KEY
+```
+
+Both commands print `AI configuration saved successfully.` on completion and overwrite the `ai` block in `.jetic/config.json`.
+
+<Note>
+  `jetic config ai` only updates the configuration file — it does not write your API key to `.env`. If you are switching providers, ensure the corresponding environment variable is already set in your shell or `.env` file before running `jetic scan` or `jetic simulate`.
+</Note>

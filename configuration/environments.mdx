@@ -1,0 +1,114 @@
+---
+title: "Configuring Environments in model.json"
+sidebarTitle: "Environments"
+description: "Define multiple environments (dev, staging, production) in your model.json with base URLs and variables so Jetic can simulate endpoints against any target."
+---
+
+Environments let you point Jetic at different servers — your local dev instance, a staging deployment, or a production mirror — without editing any code or config between runs. You define environments directly in `.jetic/model.json` as an array of named entries, each with a base URL and optional variable bindings. When you run `jetic simulate endpoint` or `jetic simulate workflow`, Jetic presents a picker so you can choose which environment to target.
+
+## What Are Environments?
+
+An environment is a named target server configuration. Rather than hardcoding `http://localhost:3000` into simulation commands, you declare all your deployment targets in `model.json` once. Jetic uses the selected environment's `baseUrl` to construct the full request URL for every simulated call, prepending it to each endpoint path from the model.
+
+This separation means the same `model.json` describes your API's behavior while environments describe *where* to test it — keeping your behavioral model portable across teams and CI environments.
+
+## Adding Environments to model.json
+
+Add an `environments` array to your `.jetic/model.json` file. Each entry requires a `name` and `baseUrl`, and optionally accepts a `variables` map for environment-specific values like tokens or API keys:
+
+```json .jetic/model.json
+{
+  "version": "0.2",
+  "project": { "name": "my-api" },
+  "environments": [
+    {
+      "name": "local",
+      "baseUrl": "http://localhost:3000",
+      "variables": {
+        "AUTH_TOKEN": {
+          "source": "env",
+          "required": true,
+          "secret": true
+        }
+      }
+    },
+    {
+      "name": "staging",
+      "baseUrl": "https://staging.api.example.com"
+    },
+    {
+      "name": "production",
+      "baseUrl": "https://api.example.com",
+      "variables": {
+        "AUTH_TOKEN": {
+          "source": "env",
+          "required": true,
+          "secret": true
+        },
+        "API_VERSION": {
+          "source": "inline",
+          "default": "v2"
+        }
+      }
+    }
+  ],
+  "endpoints": []
+}
+```
+
+## Environment Variables
+
+Each entry in the `variables` map describes how Jetic resolves a value at simulation time. The key is the variable name; the value is an `EnvironmentVariable` object:
+
+<ParamField body="source" type="string" required>
+  How to resolve the variable's value. Accepted values:
+
+  - `"env"` — Read from `process.env[variableName]`. Use this for secrets like tokens and API keys.
+  - `"file"` — Read from a local file path (the path is specified elsewhere in the variable config).
+  - `"inline"` — Use the `default` value directly. Suitable for non-secret static values like version strings.
+</ParamField>
+
+<ParamField body="required" type="boolean">
+  When `true`, Jetic will error before running a simulation if this variable cannot be resolved. Defaults to `false`.
+</ParamField>
+
+<ParamField body="secret" type="boolean">
+  When `true`, Jetic masks the value in terminal output and log files to prevent accidental leaks. Set this on any variable that holds a token, password, or API key.
+</ParamField>
+
+<ParamField body="default" type="string">
+  A fallback value used when `source` is `"inline"` or when the resolved source returns nothing. Not recommended for secrets.
+</ParamField>
+
+## Selecting an Environment
+
+When you run `jetic simulate endpoint` or `jetic simulate workflow` without specifying an environment, Jetic displays an interactive picker in the terminal listing all environments defined in your `model.json`. Select one with the arrow keys and press Enter to proceed.
+
+```
+? Select an environment:
+  ❯ local    http://localhost:3000
+    staging  https://staging.api.example.com
+    production  https://api.example.com
+```
+
+If your `model.json` defines only one environment, Jetic selects it automatically without prompting.
+
+To skip the picker and specify an environment directly — useful in CI pipelines — pass the `--env` flag:
+
+```bash
+jetic simulate workflow --goal "User registers and logs in" --env staging
+```
+
+<Warning>
+  Never put real credentials, tokens, or passwords as inline `default` values in `model.json`. Use `"source": "env"` and supply the actual value through environment variables or a secrets manager. `model.json` is often committed to version control — treat it as a public document.
+</Warning>
+
+<Tip>
+  In CI/CD pipelines, use the `--env` flag to bypass the interactive picker entirely. Set required environment variables as CI secrets, then run:
+
+  ```bash
+  jetic simulate workflow --goal "Full user journey" --env staging
+  ```
+
+  This lets you run Jetic as a non-interactive step in automated test suites.
+</Tip>

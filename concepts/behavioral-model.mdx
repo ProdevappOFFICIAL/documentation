@@ -1,0 +1,185 @@
+---
+title: "Understanding the Behavioral Model in Jetic"
+sidebarTitle: "Behavioral Model"
+description: "The Behavioral Model is Jetic's versioned JSON representation of your API — capturing endpoints, constraints, auth, and data dependencies."
+---
+
+The Behavioral Model is the heart of Jetic. When you run `jetic scan`, Jetic reads your Express TypeScript source, combines static AST analysis with AI inference, and produces a single structured file — `.jetic/model.json` — that captures everything meaningful about your API: every endpoint, every constraint, every authentication scheme, and every data dependency between routes. All subsequent Jetic commands — inspection, simulation, and workflow generation — operate against this model rather than your live server.
+
+## What the Model Contains
+
+The top-level `model.json` file follows the `BehavioralModel` schema at version `0.2`. It is a plain JSON document you can read, diff, and commit to version control.
+
+| Field | Type | Description |
+|---|---|---|
+| `version` | `string` | Schema version, currently `"0.2"` |
+| `generatedAt` | `string` | ISO 8601 timestamp of the last scan |
+| `project` | `ProjectMetadata` | Project name, language (`"typescript"`), and framework (`"express"`) |
+| `environments` | `Environment[]` | Named deployment targets, each with a `baseUrl` and optional variables |
+| `securitySchemes` | `Record<string, SecurityScheme>` | Named auth schemes (Bearer, API key, OAuth 2, etc.) |
+| `resources` | `Resource[]` | Domain entities discovered in the API (e.g., `User`, `Order`) |
+| `endpoints` | `Endpoint[]` | Every discovered route — the primary content of the model |
+| `dependencies` | `Dependency[]` | Inter-endpoint data flows (which endpoints produce/consume shared values) |
+| `workflows` | `Workflow[]` | Saved multi-step test workflow definitions |
+| `stateMachines` | `StateMachine[]` | Resource lifecycle state transitions (e.g., Order: `pending → shipped → delivered`) |
+
+## The Endpoint Object
+
+Each item in the `endpoints` array is a fully described API route. The fields below are the most important ones for simulation and inspection.
+
+<ResponseField name="id" type="string" required>
+  A stable, unique identifier for the endpoint (e.g., `"POST /api/auth/login"`).
+</ResponseField>
+
+<ResponseField name="method" type="GET | POST | PUT | PATCH | DELETE | OPTIONS | HEAD" required>
+  The HTTP method for this route.
+</ResponseField>
+
+<ResponseField name="path" type="string" required>
+  The full resolved path including any router prefix (e.g., `"/api/users/:id"`).
+</ResponseField>
+
+<ResponseField name="source" type="SourceReference" required>
+  The exact file path and line number where this route is defined (e.g., `{ "file": "src/routes/users.ts", "line": 14 }`). Used by `jetic inspect` and Jetic Studio's source viewer.
+</ResponseField>
+
+<ResponseField name="middleware" type="MiddlewareReference[]" required>
+  The middleware chain applied to this route. Each entry includes a `name` (e.g., `"authenticate"`), an optional `type` (e.g., `"auth"`), and a `scheme` reference.
+</ResponseField>
+
+<ResponseField name="parameters" type="Parameter[]">
+  Query, path, and header parameters — each with `name`, `in`, `type`, and optional `required`, `min`, `max`, and `description`.
+</ResponseField>
+
+<ResponseField name="requestBody" type="RequestBody">
+  The expected request body: `contentType`, a `fields` map of `FieldDefinition` objects, and any `constraints` (validation rules extracted from your handler code).
+</ResponseField>
+
+<ResponseField name="responses" type="Record<string, ResponseDefinition>">
+  Response shapes keyed by HTTP status code. Each entry includes `contentType` and a `schema` mapping field names to types (e.g., `{ "accessToken": "string" }`).
+</ResponseField>
+
+<ResponseField name="security" type="EndpointSecurity[]">
+  Security requirements for the route, referencing named schemes from `securitySchemes` with optional scopes.
+</ResponseField>
+
+<ResponseField name="produces" type="EndpointProduces[]">
+  Variables this endpoint emits on success — such as a `userId` or `accessToken` — which other endpoints can consume.
+</ResponseField>
+
+<ResponseField name="consumes" type="EndpointConsumes[]">
+  Variables this endpoint reads from memory or prior responses, such as an `accessToken` injected as a Bearer header.
+</ResponseField>
+
+## Constraint Discovery
+
+Jetic's AI analysis phase reads your handler source — including imported service functions — and extracts business logic rules into structured `constraints` attached to `requestBody.constraints`. This lets the simulator generate payloads that exercise both the happy path and known failure modes.
+
+A constraint looks like this:
+
+```json
+{
+  "field": "quantity",
+  "rule": "min",
+  "value": 1,
+  "failureStatus": 400
+}
+```
+
+Conditional constraints (where one field's requirement depends on another field's value) use the `when`/`then` shape:
+
+```json
+{
+  "when": { "field": "paymentMethod", "equals": "card" },
+  "then": { "field": "cardToken", "type": "string" },
+  "failureStatus": 422
+}
+```
+
+These constraints are used during endpoint simulation to construct both valid and invalid payloads, verifying that your API correctly rejects bad input.
+
+## Data Dependencies
+
+The `produces` and `consumes` fields on endpoints — together with the top-level `dependencies` array — describe how data flows across your API's routes. This is what makes multi-step workflow simulation possible.
+
+- **`produces`** — the endpoint emits a named variable into the shared memory store. For example, `POST /api/auth/login` produces `workflow:accessToken` from `data.accessToken` in the response.
+- **`consumes`** — the endpoint reads a variable from memory and uses it as a specific request component (e.g., a Bearer header).
+- **`dependencies`** — a flattened list of `{ from, to, via }` triples that Jetic uses to plan workflow step order and validate that upstream steps have run before downstream ones.
+
+```json
+{
+  "from": "POST /api/auth/login",
+  "to": "POST /api/orders",
+  "via": "accessToken"
+}
+```
+
+## Model Versioning
+
+The current schema version is `0.2`, stored in the `version` field at the top of every `model.json`. The file lives at `.jetic/model.json` relative to your project root.
+
+Here is a realistic excerpt from a `model.json` for a shop API:
+
+```json
+{
+  "version": "0.2",
+  "generatedAt": "2025-01-15T10:32:00.000Z",
+  "project": {
+    "name": "express-shop",
+    "language": "typescript",
+    "framework": "express"
+  },
+  "environments": [
+    { "name": "local", "baseUrl": "http://localhost:3000" },
+    { "name": "staging", "baseUrl": "https://staging.myshop.dev" }
+  ],
+  "securitySchemes": {
+    "bearerAuth": {
+      "type": "http",
+      "scheme": "bearer",
+      "bearerFormat": "JWT",
+      "obtainedFrom": { "endpoint": "POST /api/auth/login", "field": "data.accessToken" }
+    }
+  },
+  "endpoints": [
+    {
+      "id": "POST /api/auth/register",
+      "method": "POST",
+      "path": "/api/auth/register",
+      "source": { "file": "src/routes/auth.ts", "line": 12 },
+      "middleware": [],
+      "requestBody": {
+        "contentType": "application/json",
+        "fields": {
+          "email": { "type": "string", "required": true },
+          "password": { "type": "string", "required": true, "minLength": 8 },
+          "name": { "type": "string", "required": true }
+        },
+        "constraints": [
+          { "field": "password", "rule": "minLength", "value": 8, "failureStatus": 400 }
+        ]
+      },
+      "responses": {
+        "201": {
+          "contentType": "application/json",
+          "schema": { "userId": "string", "email": "string" }
+        }
+      },
+      "produces": [{ "variable": "userId", "responseField": "data.userId" }]
+    }
+  ],
+  "dependencies": [
+    {
+      "from": "POST /api/auth/login",
+      "to": "GET /api/orders",
+      "via": "accessToken"
+    }
+  ],
+  "workflows": [],
+  "stateMachines": []
+}
+```
+
+<Note>
+  The model is fully regenerated every time you run `jetic scan`. Any manual edits you make to `model.json` — such as adding custom environments or security scheme metadata — are preserved for the `environments` field, but all endpoint data is overwritten on the next scan.
+</Note>
