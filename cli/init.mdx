@@ -1,5 +1,5 @@
 ---
-title: "jetic init: Initialize Jetic in Your Project"
+title: "jetic init: Initialize Jetic and Configure AI Provider"
 sidebarTitle: "init"
 description: "jetic init runs an interactive setup wizard that configures your AI provider, model, and API key, then creates the .jetic/ directory and config.json."
 ---
@@ -20,21 +20,21 @@ Run this command from the root of your Express TypeScript project. If you need t
   <Step title="Prompt for AI provider">
     Jetic asks which AI provider to use. Press **Enter** to accept the default (`openrouter`), or type `openai` to use OpenAI directly.
 
-    ```
+    ```text
     AI Provider [default: openrouter]:
     ```
   </Step>
   <Step title="Prompt for model name">
     Next, choose a model. Press **Enter** to use the default, or supply any model name supported by your provider.
 
-    ```
+    ```text
     Model name [default: meta-llama/llama-3.1-8b-instruct]:
     ```
   </Step>
   <Step title="Prompt for API key">
     Paste your API key. Jetic derives the environment variable name automatically from your provider (e.g., `OPENROUTER_API_KEY` or `OPENAI_API_KEY`).
 
-    ```
+    ```text
     API Key:
     ```
   </Step>
@@ -47,7 +47,7 @@ Run this command from the root of your Express TypeScript project. If you need t
   <Step title="Write the API key to .env">
     If you supplied an API key during the prompt, Jetic appends it to a `.env` file in your project root using the derived variable name:
 
-    ```
+    ```text
     OPENROUTER_API_KEY=<your-key>
     ```
 
@@ -57,7 +57,7 @@ Run this command from the root of your Express TypeScript project. If you need t
 
 ## Example Session
 
-```
+```text
 Welcome to Jetic Initialization
 
 AI Provider [default: openrouter]: openrouter

@@ -1,7 +1,7 @@
 ---
-title: "Jetic: AI-Native API Behavior Testing Platform"
+title: "Jetic: AI-Native API Behavior Testing and Discovery"
 sidebarTitle: "Introduction"
-description: "Learn how Jetic discovers your API structure, extracts business logic constraints, and runs intelligent multi-step tests without touching your running server."
+description: "Learn how Jetic discovers your API structure, extracts business logic constraints, and runs intelligent multi-step tests — no running server needed."
 ---
 
 Jetic is a developer platform that understands your Express TypeScript API from the source code up. Instead of requiring you to write tests manually or intercept live traffic, Jetic reads your project's Abstract Syntax Tree, builds a precise Behavioral Model of every endpoint, and lets AI generate and execute end-to-end workflow tests against your running server. The result is deep API confidence with a fraction of the setup cost.
@@ -16,7 +16,7 @@ Jetic follows a four-phase pipeline from raw source code to actionable test resu
 
 <Steps>
   <Step title="Scan">
-    Jetic's scanner parses your TypeScript source files using `ts-morph` AST analysis. It detects every Express route registration — including nested routers and middleware mounts — without executing a single line of your application code.
+    Jetic's scanner parses your TypeScript source files using AST analysis. It detects every Express route registration — including nested routers and middleware mounts — without executing a single line of your application code.
   </Step>
   <Step title="Model">
     Discovered endpoints are normalized into a versioned **Behavioral Model** (`model.json`). Each entry records the HTTP method, path, source file and line number, middleware stack, inferred parameters, request and response schemas, and business logic constraints extracted from handler code.

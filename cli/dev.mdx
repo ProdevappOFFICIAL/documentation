@@ -1,5 +1,5 @@
 ---
-title: "jetic dev: Launch the Jetic Studio Dashboard"
+title: "jetic dev: Open Jetic Studio, the Local API Dashboard"
 sidebarTitle: "dev"
 description: "jetic dev starts a local web server serving Jetic Studio — a browser-based IDE for exploring your API model, running simulations, and inspecting memory."
 ---
@@ -23,19 +23,19 @@ jetic dev [--port <number>]
 Once the server starts, Jetic automatically opens `http://localhost:8787` (or your chosen port) in your default browser. Jetic Studio includes five pages:
 
 <CardGroup cols={2}>
-  <Card title="Overview" icon="chart-bar" href="http://localhost:8787/overview">
+  <Card title="Overview" icon="chart-bar">
     A stats dashboard showing endpoint counts, method distributions, and a summary of your Behavioral Model's current state.
   </Card>
-  <Card title="Model Explorer" icon="table-list" href="http://localhost:8787/model">
+  <Card title="Model Explorer" icon="table-list">
     Browse every discovered endpoint in a searchable, filterable table. Click any row to view its full schema.
   </Card>
-  <Card title="Endpoint Inspector" icon="code" href="http://localhost:8787/inspect">
+  <Card title="Endpoint Inspector" icon="code">
     Deep-dive into a single endpoint: view its source file with a highlighted code snippet, request body definition, response schemas, middleware chain, and run a live HTTP request directly from the browser.
   </Card>
-  <Card title="Simulations" icon="play" href="http://localhost:8787/simulations">
+  <Card title="Simulations" icon="play">
     Build and run multi-step workflow tests in the browser. Watch each step execute in real time with a live status feed, captured memory values, and response previews.
   </Card>
-  <Card title="Memory" icon="database" href="http://localhost:8787/memory">
+  <Card title="Memory" icon="database">
     Inspect, add, and delete entries in the Jetic memory store. See exactly which tokens and IDs were captured during your last workflow run.
   </Card>
 </CardGroup>
@@ -48,7 +48,7 @@ Start Jetic Studio on a custom port:
 jetic dev --port 3000
 ```
 
-```
+```text
 🚀 Jetic Studio is running at http://localhost:3000
 ```
 
@@ -60,7 +60,7 @@ To use the default port:
 jetic dev
 ```
 
-```
+```text
 🚀 Jetic Studio is running at http://localhost:8787
 ```
 

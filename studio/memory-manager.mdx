@@ -1,7 +1,7 @@
 ---
-title: "Memory Manager: Inspect and Edit Workflow State"
+title: "Memory Manager: View and Edit Workflow Memory State"
 sidebarTitle: "Memory Manager"
-description: "The Memory Manager in Jetic Studio shows all stored memory entries from .jetic/memory.json and lets you add, edit, or delete values used in workflow templates."
+description: "Inspect and edit the key-value memory store in Jetic Studio. Add, update, or delete entries used for template injection across workflow steps."
 ---
 
 The Memory Manager gives you direct visibility into the key-value store that powers template injection across your workflow steps. Navigate to `/memory` in Jetic Studio to see every entry currently saved in `.jetic/memory.json`, and to add, edit, or remove values without dropping to the terminal.
@@ -45,5 +45,5 @@ Pre-seeding memory entries is particularly useful in two scenarios:
 **Storing environment-specific IDs for reuse across workflows.** If your test environment contains seed data (a known product ID, a fixed user account, a pre-created order), store those IDs in memory (for example `seed:productId`) and reference them in workflow body fields or path parameters. This keeps your `workflow.json` files generic and environment-agnostic.
 
 <Tip>
-  Use the `global:` scope for values that should survive across multiple workflow runs and not be cleared when you run `jetic simulate workflow --clear-memory`. The `--clear-memory` flag only clears the `workflow:` scope, leaving `global:` entries intact so your persistent seeds and tokens remain available.
+  The `jetic simulate workflow --clear-memory` flag wipes all scopes in `.jetic/memory.json` before the run begins. If you need to preserve values like seed IDs or long-lived tokens across runs, add them back manually using **Add Entry** in the Memory Manager (or `jetic memory add`) after clearing, or simply omit `--clear-memory` and let the run overwrite only the keys it captures.
 </Tip>

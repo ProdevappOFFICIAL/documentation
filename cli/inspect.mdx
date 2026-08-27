@@ -1,7 +1,7 @@
 ---
-title: "jetic inspect: View Discovered API Endpoints"
+title: "jetic inspect: List and Inspect Discovered API Endpoints"
 sidebarTitle: "inspect"
-description: "jetic inspect lists all discovered endpoints from model.json. Use jetic inspect endpoint to drill into a specific route's source location and schema."
+description: "jetic inspect prints every endpoint in model.json. Add the endpoint subcommand with a method and path to see the source location for any specific route."
 ---
 
 After running `jetic scan`, use `jetic inspect` to browse what was discovered. The base command prints a compact table of all endpoints in your Behavioral Model. The `endpoint` subcommand lets you zoom in on a specific route to see exactly where in your source code it is defined.
@@ -32,7 +32,7 @@ The `inspect endpoint` subcommand accepts two positional arguments:
 
 ### `jetic inspect` — endpoint table
 
-```
+```text
 Model Version: 0.2
 Endpoints (14):
 
@@ -54,7 +54,7 @@ PATCH  /api/orders/:id/status
 
 ### `jetic inspect endpoint GET /api/orders/:id` — source location
 
-```
+```text
 GET /api/orders/:id
 
 Source:

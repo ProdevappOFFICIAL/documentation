@@ -1,27 +1,27 @@
 ---
 title: "Understanding the Behavioral Model in Jetic"
 sidebarTitle: "Behavioral Model"
-description: "The Behavioral Model is Jetic's versioned JSON representation of your API — capturing endpoints, constraints, auth, and data dependencies."
+description: "The Behavioral Model is Jetic's versioned JSON snapshot of your API — capturing endpoints, auth schemes, parameters, and data dependencies."
 ---
 
-The Behavioral Model is the heart of Jetic. When you run `jetic scan`, Jetic reads your Express TypeScript source, combines static AST analysis with AI inference, and produces a single structured file — `.jetic/model.json` — that captures everything meaningful about your API: every endpoint, every constraint, every authentication scheme, and every data dependency between routes. All subsequent Jetic commands — inspection, simulation, and workflow generation — operate against this model rather than your live server.
+The Behavioral Model is the heart of Jetic. When you run `jetic scan`, Jetic reads your Express TypeScript source, combines static AST analysis with AI inference, and produces a single structured file — `.jetic/model.json` — that captures everything meaningful about your API: every endpoint, every authentication scheme, request and response shapes, middleware semantics, and data dependencies between routes. All subsequent Jetic commands — inspection, simulation, and workflow generation — operate against this model rather than your live server.
 
 ## What the Model Contains
 
 The top-level `model.json` file follows the `BehavioralModel` schema at version `0.2`. It is a plain JSON document you can read, diff, and commit to version control.
 
-| Field | Type | Description |
-|---|---|---|
-| `version` | `string` | Schema version, currently `"0.2"` |
-| `generatedAt` | `string` | ISO 8601 timestamp of the last scan |
-| `project` | `ProjectMetadata` | Project name, language (`"typescript"`), and framework (`"express"`) |
-| `environments` | `Environment[]` | Named deployment targets, each with a `baseUrl` and optional variables |
-| `securitySchemes` | `Record<string, SecurityScheme>` | Named auth schemes (Bearer, API key, OAuth 2, etc.) |
-| `resources` | `Resource[]` | Domain entities discovered in the API (e.g., `User`, `Order`) |
-| `endpoints` | `Endpoint[]` | Every discovered route — the primary content of the model |
-| `dependencies` | `Dependency[]` | Inter-endpoint data flows (which endpoints produce/consume shared values) |
-| `workflows` | `Workflow[]` | Saved multi-step test workflow definitions |
-| `stateMachines` | `StateMachine[]` | Resource lifecycle state transitions (e.g., Order: `pending → shipped → delivered`) |
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `version` | `string` | ✅ | Schema version, currently `"0.2"` |
+| `generatedAt` | `string` | ✅ | ISO 8601 timestamp of the last scan |
+| `project` | `ProjectMetadata` | ✅ | Project name, language (`"typescript"`), and framework (`"express"`) |
+| `endpoints` | `Endpoint[]` | ✅ | Every discovered route — the primary content of the model |
+| `environments` | `Environment[]` | — | Named deployment targets, each with a `baseUrl` and optional variables |
+| `securitySchemes` | `Record<string, SecurityScheme>` | — | Named auth schemes (Bearer, API key, OAuth 2, etc.) |
+| `resources` | `Resource[]` | — | Domain entities discovered in the API (e.g., `User`, `Order`) |
+| `dependencies` | `Dependency[]` | — | Inter-endpoint data flows (which endpoints produce/consume shared values) |
+| `workflows` | `Workflow[]` | — | Saved multi-step test workflow definitions |
+| `stateMachines` | `StateMachine[]` | — | Resource lifecycle state transitions (e.g., Order: `pending → shipped → delivered`) |
 
 ## The Endpoint Object
 
@@ -52,7 +52,7 @@ Each item in the `endpoints` array is a fully described API route. The fields be
 </ResponseField>
 
 <ResponseField name="requestBody" type="RequestBody">
-  The expected request body: `contentType`, a `fields` map of `FieldDefinition` objects, and any `constraints` (validation rules extracted from your handler code).
+  The expected request body: `contentType`, a `fields` map of `FieldDefinition` objects, and an optional `constraints` array of structured validation rules (see [Constraints](#constraints) below).
 </ResponseField>
 
 <ResponseField name="responses" type="Record<string, ResponseDefinition>">
@@ -68,14 +68,14 @@ Each item in the `endpoints` array is a fully described API route. The fields be
 </ResponseField>
 
 <ResponseField name="consumes" type="EndpointConsumes[]">
-  Variables this endpoint reads from memory or prior responses, such as an `accessToken` injected as a Bearer header.
+  Variables this endpoint reads from memory or prior responses and injects into the request. Each entry has a `variable` (the `scope:key` reference), a `usedAs` string describing how it is applied (e.g., `"Authorization header"`), and an optional `producedBy` reference to the upstream endpoint.
 </ResponseField>
 
-## Constraint Discovery
+## Constraints
 
-Jetic's AI analysis phase reads your handler source — including imported service functions — and extracts business logic rules into structured `constraints` attached to `requestBody.constraints`. This lets the simulator generate payloads that exercise both the happy path and known failure modes.
+The `requestBody.constraints` array holds structured validation rules attached to an endpoint's request body. When constraints are present, the simulator can construct both valid and invalid payloads to verify that your API correctly accepts or rejects them.
 
-A constraint looks like this:
+A simple constraint specifies a field, a rule name, a threshold value, and the expected HTTP status code when the rule is violated:
 
 ```json
 {
@@ -96,7 +96,7 @@ Conditional constraints (where one field's requirement depends on another field'
 }
 ```
 
-These constraints are used during endpoint simulation to construct both valid and invalid payloads, verifying that your API correctly rejects bad input.
+You can add constraints manually to `model.json`, or they may be populated by future AI analysis enhancements. Either way, Jetic respects any constraints present in the model when generating simulation payloads.
 
 ## Data Dependencies
 

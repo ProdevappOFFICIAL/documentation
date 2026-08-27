@@ -1,5 +1,5 @@
 ---
-title: "Model Explorer: Browse Your Full API Surface"
+title: "Model Explorer: Browse and Search Your API Surface"
 sidebarTitle: "Model Explorer"
 description: "The Model Explorer page in Jetic Studio displays all discovered endpoints with search, filter by method, and detailed schema cards for each route."
 ---
@@ -28,7 +28,7 @@ Each card in the Model Explorer surfaces the most important metadata for a route
 
 ## Trigger Re-Scan
 
-If you modify your Express routes and want the Model Explorer to reflect the latest code, click the **Re-Scan** button in the top-right toolbar. Studio sends a `POST /api/model/scan` request to the local server, which runs the `ExpressScanner` against your project and overwrites `.jetic/model.json` with the updated model. The endpoint list refreshes automatically once the scan completes.
+If you modify your Express routes and want the Model Explorer to reflect the latest code, click the **Re-Scan** button in the top-right toolbar. Studio sends a `POST /api/model/scan` request to the local server, which re-analyzes your project and overwrites `.jetic/model.json` with the updated model. The endpoint list refreshes automatically once the scan completes.
 
 <Tip>
   Click any endpoint card to jump directly to the Endpoint Inspector for that route, where you can view the original source code, full request and response schemas, and fire a live request against your running server.

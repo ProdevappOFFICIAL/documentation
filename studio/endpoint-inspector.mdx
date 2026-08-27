@@ -1,5 +1,5 @@
 ---
-title: "Endpoint Inspector: Deep-Dive Into Any API Route"
+title: "Endpoint Inspector: Source, Schema, and Live Testing"
 sidebarTitle: "Endpoint Inspector"
 description: "The Endpoint Inspector in Jetic Studio shows source code, request/response schemas, constraints, and an interactive simulator for any discovered endpoint."
 ---
@@ -12,11 +12,11 @@ The Inspector is divided into four panels, each surfacing a different layer of y
 
 ### Source Viewer
 
-The Source Viewer displays the exact backend handler for the selected endpoint. Jetic resolves the source file and line number from your `model.json` and fetches the snippet via `GET /api/model/source?file=&line=`. The panel:
+The Source Viewer displays the exact backend handler for the selected endpoint. Jetic resolves the source file and line number from your `model.json` and fetches the snippet via `GET /api/model/source?file=<file>&line=<line>`. The panel:
 
 - Highlights the specific line where the route handler begins
 - Shows approximately 40 lines of context (five lines before, 35 lines after) to keep the handler in view
-- Lists **Related Files** — TypeScript modules imported by the handler file (middleware, validators, models) resolved via `GET /api/model/related?id=`
+- Lists **Related Files** — TypeScript modules imported by the handler file (middleware, validators, models) resolved via `GET /api/model/related?id=<endpointId>`
 - Lets you click any related file to load its source in the same viewer
 
 ### Schema Panel

@@ -1,7 +1,7 @@
 ---
-title: "Simulations: Build and Run API Workflow Tests"
+title: "Simulations: Run AI Workflow Tests in Jetic Studio"
 sidebarTitle: "Simulations"
-description: "The Simulations page in Jetic Studio lets you generate AI-powered multi-step workflows, run them visually, and track step-by-step progress with memory injection."
+description: "Run AI-generated multi-step workflow tests in Jetic Studio with real-time step feedback, memory injection, and captured value tracing."
 ---
 
 The Simulations page is where Jetic's AI-powered workflow engine comes to life visually. Navigate to `/simulations` in Jetic Studio to see all your saved workflows, run them with real-time step-by-step feedback, and generate new multi-step test scenarios using natural language goals — all without touching the command line.
@@ -34,7 +34,7 @@ Each step card in the running view shows the full execution detail for that step
 - **Expected vs actual status** — the HTTP status code the step expected alongside the code the server returned
 - **Response body** — the full JSON response from the server, expandable inline
 
-If a step fails and does not have `continueOnFailure` set, the workflow halts and Studio displays an `aborted` banner with the reason.
+If a step encounters a hard network error and does not have `continueOnFailure` set, the workflow halts and Studio displays an `aborted` banner with the reason. Steps that receive an unexpected HTTP status code are marked as failed but do not stop subsequent steps unless a network-level error occurs.
 
 ## Generate New Workflow
 

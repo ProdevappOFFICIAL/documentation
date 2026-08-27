@@ -1,7 +1,7 @@
 ---
-title: "Configuring Environments in model.json"
+title: "Simulation Environment Configuration in model.json"
 sidebarTitle: "Environments"
-description: "Define multiple environments (dev, staging, production) in your model.json with base URLs and variables so Jetic can simulate endpoints against any target."
+description: "Define named environments in model.json with base URLs and variable bindings so Jetic can simulate endpoints against dev, staging, or production targets."
 ---
 
 Environments let you point Jetic at different servers — your local dev instance, a staging deployment, or a production mirror — without editing any code or config between runs. You define environments directly in `.jetic/model.json` as an array of named entries, each with a base URL and optional variable bindings. When you run `jetic simulate endpoint` or `jetic simulate workflow`, Jetic presents a picker so you can choose which environment to target.
@@ -64,7 +64,7 @@ Each entry in the `variables` map describes how Jetic resolves a value at simula
   How to resolve the variable's value. Accepted values:
 
   - `"env"` — Read from `process.env[variableName]`. Use this for secrets like tokens and API keys.
-  - `"file"` — Read from a local file path (the path is specified elsewhere in the variable config).
+  - `"file"` — Read from a local file. Jetic reads the file at the path specified in the `default` field.
   - `"inline"` — Use the `default` value directly. Suitable for non-secret static values like version strings.
 </ParamField>
 
